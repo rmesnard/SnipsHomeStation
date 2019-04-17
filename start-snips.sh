@@ -116,8 +116,8 @@ chmod -R 777 /var/log
 # snips_skill_server_pid=$!
 
 #start Snips TTS service
-snips-tts 2> /var/log/snips-tts.log &
-snips_tts_pid=$!
+# snips-tts 2> /var/log/snips-tts.log &
+# snips_tts_pid=$!
 
 #start the snips audio server 
 snips-audio-server --hijack localhost:64321 2> /var/log/snips-audio-server.log &
