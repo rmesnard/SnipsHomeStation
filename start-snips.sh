@@ -46,7 +46,7 @@ chmod -R 777 /usr/share/snips/skills
 echo "Deploy assistant."
 
 #deploy apps (skills).
-snips-template render
+# snips-template render
 
 #goto skill directory
 
@@ -61,15 +61,15 @@ fi
 cd /usr/share/snips/skills
 
 #run setup.sh for each skill.
-find . -maxdepth 1 -type d -print0 | while IFS= read -r -d '' dir; do
-	cd "$dir" 
-	if [ -f setup.sh ]; then
-		echo "Run setup.sh in "$dir
-		#run the scrips always with bash
-		bash ./setup.sh
-	fi
-	cd /usr/share/snips/skills
-done
+# find . -maxdepth 1 -type d -print0 | while IFS= read -r -d '' dir; do
+	# cd "$dir" 
+	# if [ -f setup.sh ]; then
+		# echo "Run setup.sh in "$dir
+		# run the scrips always with bash
+		# bash ./setup.sh
+	# fi
+	# cd /usr/share/snips/skills
+# done
 
 #skill deployment is done
 
