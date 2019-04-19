@@ -149,7 +149,8 @@ def process_streamaudio(channel, msg, a_play, a_record):
 
     if a_record and not record_running :
         wfile = os.path.join(RECORD_PATH ,channel + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")+".wav")
-        print(" file : " +  myrec.filename)
+        print(" file : " +  wfile)
+
         record = wave.Wave_write
         record = wave.open(wfile, "wb")
         record.setnchannels(channels)
@@ -161,9 +162,7 @@ def process_streamaudio(channel, msg, a_play, a_record):
     while (chunkOffset < size):
         subchunk2id, subchunk2size = struct.unpack('<4sI', msg.payload[chunkOffset:chunkOffset+8])
         chunkOffset += 8
-        #print("chunk id: %s, size: %i" % (subchunk2id, subchunk2size))
-        if a_record:
-            record.writeframes(msg.payload[chunkOffset:chunkOffset+subchunk2size])
+
         if (subchunk2id == b'data'):
             if a_record:
                 record.writeframes(msg.payload[chunkOffset:chunkOffset+subchunk2size])
