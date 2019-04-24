@@ -2,7 +2,7 @@
 set -e
 
 #verify that environment variables have been passed to this container. set the default value if not.
-ENABLE_MQTT=${ENABLE_MQTT:-yes}
+ENABLE_MQTT=${ENABLE_MQTT:-no}
 ENABLE_HOTWORD_SERVICE=${ENABLE_HOTWORD_SERVICE:-yes}
 ENABLE_INTERCOM=${ENABLE_INTERCOM:-yes}
 
@@ -45,9 +45,6 @@ chmod -R 777 /usr/share/snips/skills
 
 echo "Deploy assistant."
 
-#deploy apps (skills).
-# snips-template render
-
 #goto skill directory
 
 if [ -d /usr/share/snips/config ]; then
@@ -56,24 +53,6 @@ if [ -d /usr/share/snips/config ]; then
 	cp -f /usr/share/snips/config/snips.toml /etc/snips.toml
 	chmod -R 777 /etc/snips.toml
 fi
-
-#be sure we are still in the skill directory
-cd /usr/share/snips/skills
-
-#run setup.sh for each skill.
-# find . -maxdepth 1 -type d -print0 | while IFS= read -r -d '' dir; do
-	# cd "$dir" 
-	# if [ -f setup.sh ]; then
-		# echo "Run setup.sh in "$dir
-		# run the scrips always with bash
-		# bash ./setup.sh
-	# fi
-	# cd /usr/share/snips/skills
-# done
-
-#skill deployment is done
-
-echo "skill deployment is done"
 
 #go back to root directory
 cd /
@@ -89,35 +68,31 @@ echo "Start snips services"
 chmod -R 777 /var/log
 
 #start Snips analytics service
-# snips-analytics 2> /var/log/snips-analytics.log  &
-# snips_analytics_pid=$!
+snips-analytics 2> /var/log/snips-analytics.log  &
+snips_analytics_pid=$!
 
 #start Snips' Automatic Speech Recognition service
-# snips-asr 2> /var/log/snips-asr.log &
-# snips_asr_pid=$!
+snips-asr 2> /var/log/snips-asr.log &
+snips_asr_pid=$!
 
 #start Snips-dialogue service
-# snips-dialogue 2> /var/log/snips-dialogue.log  &
-# snips_dialogue_pid=$!
+snips-dialogue 2> /var/log/snips-dialogue.log  &
+snips_dialogue_pid=$!
 
 #start Snips hotword service
 
-# if [ $ENABLE_HOTWORD_SERVICE == yes ]; then
-	# snips-hotword 2> /var/log/snips-hotword.log & 
-	# snips_hotword_pid=$!
-# fi
+if [ $ENABLE_HOTWORD_SERVICE == yes ]; then
+	snips-hotword 2> /var/log/snips-hotword.log & 
+	snips_hotword_pid=$!
+ fi
 
 #start Snips Natural Language Understanding service
-# snips-nlu 2> /var/log/snips-nlu.log &
-# snips_nlu_pid=$!
-
-#start Snips Skill service
-# snips-skill-server 2> /var/log/snips-skill-server.log &
-# snips_skill_server_pid=$!
+snips-nlu 2> /var/log/snips-nlu.log &
+snips_nlu_pid=$!
 
 #start Snips TTS service
-# snips-tts 2> /var/log/snips-tts.log &
-# snips_tts_pid=$!
+snips-tts 2> /var/log/snips-tts.log &
+snips_tts_pid=$!
 
 #start the snips audio server 
 snips-audio-server --hijack localhost:64321 2> /var/log/snips-audio-server.log &
@@ -125,14 +100,20 @@ snips_audio_server_pid=$!
 
 echo "snips services started.. check logs"
 
-# if [ $ENABLE_INTERCOM == yes ]; then
-	# echo "Start intercom"
-	# cd /usr/share/snips/skills
-	# nohup python3 -u intercom.py 2> /var/log/doorbell.log &
-	# snips_intercom=$!
-# fi
+if [ $ENABLE_INTERCOM == yes ]; then
+	echo "Start intercom"
+	cd /usr/share/snips/skills
+	nohup python3 -u intercom.py 2> /var/log/doorbell.log &
+	snips_listener_pid=$!
+fi
+
+#start homestation skill
+cd /usr/share/snips/skills
+nohup python3 -u homestation.py 2> /var/log/homestation.log &
+snips_homestation_pid=$!
+
 
 echo "running ok"
 
-wait "$snips_audio_server_pid"
+wait "$snips_analytics_pid" "$snips_asr_pid" "$snips_dialogue_pid" "$snips_hotword_pid" "$snips_nlu_pid" "$snips_skill_server_pid" "$snips_audio_server_pid"
 

@@ -50,3 +50,5 @@ docker run -d -p 192.168.2.106:445:445 \
 #console
 
 docker exec -it snips-homestation bash
+
+cd /usr/share/snips
