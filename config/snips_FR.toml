@@ -1,10 +1,11 @@
 [snips-common]
 bus = "mqtt"
 mqtt = "192.168.2.101:1883"
-# audio = ["+@mqtt"]
-# assistant = "/usr/share/snips/assistant"
-# user_dir = "/var/lib/snips"
-
+site_id = "snipsdoorbell"
+audio = ["snipsdoorbell@mqtt"]
+assistant = "/usr/share/snips/assistant"
+user_dir = "/usr/share/snips"
+locale = "fr-FR"
 ## MQTT authentication
 # mqtt_username = ""
 # mqtt_password = ""
@@ -23,7 +24,7 @@ mqtt = "192.168.2.101:1883"
 # no_fst_map = true
 # beam_size = 8
 # model = "/usr/share/snips/asr"
-# audio = ["+@mqtt"]
+audio = ["snipsdoorbell@mqtt"]
 
 [snips-asr-google]
 # credentials = "/usr/share/snips/googlecredentials.json"
@@ -31,22 +32,22 @@ mqtt = "192.168.2.101:1883"
 
 [snips-audio-server]
 # frame = 256
-bind = "server@mqtt"
-# mike = "Built-in Microphone"
+bind = "snipsdoorbell@mqtt"
+mike = "rpi"
 # disable_playback = false
 
 [snips-dialogue]
 # resources = "/usr/share/snips/dialogue"
 # session_timeout = 15
 # lambda_timeout = 5
-# retry_count = 3
-# sound_feedback_disabled_default = false
+retry_count = 1
+sound_feedback_disabled_default = true
 
 [snips-hotword]
 # model = "/usr/share/snips/hotword"
 # hotword_id = "default"
 # sensitivity = "0.5"
-audio = ["server@mqtt"]
+audio = ["snipsdoorbell@mqtt"]
 
 [snips-injection]
 #asr_model = "/usr/share/snips/asr"
@@ -66,17 +67,41 @@ provider = "customtts"
 ##  espeak -vmb-fr1 -p30 -s 130 "ceci est un test de prononciation fransaise"
 customtts = { command = ["espeak", "-vmb-fr1", "-p30", "-s130", "-w%%OUTPUT_FILE%%", "%%TEXT%%"] }
 
-[mumble]
-host = 192.168.2.104
-user = snipsdoorbell
-channel = Root
-audio_in = myInput
-audio_out = plughw:1,0
-bitrate = 48000
-periodsize = 1920
-# Mono, pymumble propably does not support stereo
+[snips-audio-player]
+audio_out = "rpi"
+bitrate = 16000
+periodsize = 1600
 channels = 1
 bandwith = 200000
 # Debug 0 or 1
 debug = 0
+record_path = "/usr/share/snips/records"
+
+
+# doorbell config
+
+[snips-doorbell]
+button_gpio_bcm = 17
+
+#how many try to call user at home
+retry_ask_home = 3
+#how many time to wait user at home
+timer_ask_home = 40
+#max record time
+timer_record = 60
+
+mqtt_homestation = "snipshome"
+mqtt_topic_presence = "home/presence"
+mqtt_payload_presence = "Yes"
+
+say_welcome_present = "Bonjours, Un instant, j'appel monsieur dupon."
+say_welcome_nopresent = "Bonjours, Je suis absent. Voulez vous laisser un message ?"
+say_no_reply = "Il ne répond pas. Voulez vous laisser un message ?"
+say_wait_more = "Un instant sil vous plait il va vous répondre."
+say_start_message = "j'écoute"
+say_thanks = "Merci, je lui transmet."
+say_goobye = "Aurevoir"
+
+say_incomming = "Quelqu'un sonne a la porte"
+say_incomming_service = " sonne a la porte"
 
