@@ -1,5 +1,9 @@
 # SnipsDoorbell Home Station Docker Image
 
+
+A Docker Image for a Doorbell with voice interaction using SNIPS   (HOME STATION)
+
+
 Project Here  :
 
 https://www.hackster.io/remy-mesnard/doorbell-intercom-with-snips-voice-assistant-68e77a
@@ -26,13 +30,12 @@ sudo docker volume create snips_log
 #run 
 
 sudo docker run -d --name snips-homestation \
--v snips_log:/var/log \
--v snips_config:/usr/share/snips \
---device=/dev/snd:/dev/snd \
--e ENABLE_MQTT=no \
--e ENABLE_HOTWORD_SERVICE=no \
--p 1883:1883 \
-lijah/snips-homestation
+	-v snips_log:/var/log \
+	-v snips_config:/usr/share/snips \
+	--privileged \
+	--device=/dev/snd:/dev/snd \
+	--device=/dev/mem:/dev/mem \-p 1883:1883 \
+	lijah/snips-homestation
 
 
 
