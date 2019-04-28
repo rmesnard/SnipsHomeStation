@@ -17,7 +17,7 @@ RUN set -x && \
 	
 #since recommended packets are NOT installed by default, we have to install them explicit
 RUN set -x && \
-	apt-get install -y snips-makers-tts alsa-utils snips-platform-voice snips-skill-server mosquitto snips-analytics snips-asr snips-audio-server snips-dialogue snips-hotword snips-nlu curl unzip snips-template python3-pip python3-setuptools python3-wheel libasound2-dev libasound2 libasound2-data git espeak
+	apt-get install -y snips-makers-tts alsa-utils snips-audio-server curl unzip snips-template python3-pip python3-setuptools python3-wheel libasound2-dev libasound2 libasound2-data git espeak
 	
 #python libraries
 

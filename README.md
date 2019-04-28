@@ -39,9 +39,7 @@ sudo docker run -d --name snips-homestation \
 	-v snips_config:/usr/share/snips \
 	--privileged \
 	--device=/dev/snd:/dev/snd \
-	--device=/dev/mem:/dev/mem \-p 1883:1883 \
 	lijah/snips-homestation
-
 
 
 #share config 

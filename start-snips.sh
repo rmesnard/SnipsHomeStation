@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-ENABLE_INTERCOM=${ENABLE_INTERCOM:-yes}
 
 echo "Install config."
 if [ ! -d "/usr/share/snips/config" ]; then
@@ -43,17 +42,10 @@ snips_audio_server_pid=$!
 
 echo "snips services started.. check logs"
 
-if [ $ENABLE_INTERCOM == yes ]; then
-	echo "Start intercom"
-	cd /usr/share/snips/skills
-	nohup python3 -u listener.py 2> /var/log/listener.log &
-	snips_listener_pid=$!
-fi
-
-#start homestation skill
-#cd /usr/share/snips/skills
-#nohup python3 -u homestation.py 2> /var/log/homestation.log &
-#snips_homestation_pid=$!
+echo "Start homestation skill"
+cd /usr/share/snips/skills
+nohup python3 -u listener.py 2> /var/log/listener.log &
+snips_listener_pid=$!
 
 
 echo "running ok"
