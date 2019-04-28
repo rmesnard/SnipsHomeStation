@@ -26,7 +26,6 @@ RUN cd /opt && pip3 install configparser pyalsaaudio protobuf RPi.GPIO smbus2 he
 COPY ./config/ /config/ 
 COPY ./assistant/ /assistant/ 
 COPY ./skills/ /skills/ 
-COPY mbrola mbrola
 
 COPY start-snips.sh start-snips.sh
 
