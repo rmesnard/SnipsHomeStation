@@ -24,7 +24,6 @@ RUN set -x && \
 RUN cd /opt && pip3 install configparser pyalsaaudio protobuf RPi.GPIO smbus2 hermes-python paho-mqtt
 	
 COPY ./config/ /config/ 
-COPY ./assistant/ /assistant/ 
 COPY ./skills/ /skills/ 
 
 COPY start-snips.sh start-snips.sh
