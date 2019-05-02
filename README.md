@@ -1,11 +1,10 @@
-# SnipsDoorbell Home Station Docker Image
+# Snips Home Station Docker Image
 
 
-A Docker Image for a Doorbell with voice interaction using SNIPS   (HOME STATION)
+A Docker Image to build a SNIPS Satellite to work with Snips Server and Snips Doorbell   (HOME STATION)
 
 
-Project Here  :
-
+Initial Project Here  :
 https://www.hackster.io/remy-mesnard/doorbell-intercom-with-snips-voice-assistant-68e77a
 
 GitHub Project :
@@ -13,6 +12,8 @@ https://github.com/users/rmesnard/projects/1
 
 Wiki :
 
+
+Issues are group on SnipsDoorbell Project :  https://github.com/rmesnard/SnipsDoorbell
 
 #build
 
