@@ -27,6 +27,7 @@ sudo docker build -t lijah/snips-homestation github.com/rmesnard/SnipsHomeStatio
 
 #install
 
+
 create volume :
 
 sudo docker volume create snips_config
@@ -35,12 +36,12 @@ sudo docker volume create snips_log
 #run 
 
 sudo docker run -d --name snips-homestation \
-	-v snips_log:/var/log \
-	-v snips_config:/usr/share/snips \
-	--privileged \
-	--device=/dev/snd:/dev/snd \
-	--device=/dev/mem:/dev/mem \
-	lijah/snips-homestation
+-v snips_log:/var/log \
+-v snips_config:/usr/share/snips \
+--privileged \
+--device=/dev/snd:/dev/snd \
+--device=/dev/ttyUSB0 \
+lijah/snips-homestation
 
 
 #share config 
@@ -56,6 +57,6 @@ docker run -d -p 192.168.2.106:445:445 \
 
 #console
 
-docker exec -it snips-homestation bash
+sudo docker exec -it snips-homestation bash
 
 cd /usr/share/snips
