@@ -13,7 +13,7 @@
 // How many NeoPixels are attached to the Arduino?
 #define NUMPIXELS 128 // Popular NeoPixel ring size
 #define NUMVERTICAL  8
-#define NUMHORIZON  64
+#define NUMHORIZON  16
 
 // When setting up the NeoPixel library, we tell it how many pixels,
 // and which pin to use to send signals. Note that for older NeoPixel
@@ -138,7 +138,7 @@ void scrollright()
         memoB[i] = motifB[i+NUMPIXELS-NUMVERTICAL];
       }      
   
-      for(int i=NUMPIXELS-NUMVERTICAL; i>0; i--) 
+      for(int i=NUMPIXELS-NUMVERTICAL-1; i>=0; i--) 
       { 
         motifR[i+NUMVERTICAL] = motifR[i];
         motifG[i+NUMVERTICAL] = motifG[i];
@@ -178,7 +178,9 @@ bool waitnbytes(int nbbytes)
       timeout++;
     }
     if ( timeout < 100 )
-      return true;
+       return true;
+
+    Serial.println("timeout"); 
     return false;
 }
 
@@ -231,7 +233,7 @@ void loop() {
           if (incomingByte == 'P') 
           {
             // Define Pixel color
-            if ( waitnbytes(6) )
+            if ( waitnbytes(8) )
             {
               indexp = getHex();
               if (( indexp > -1 ) & ( indexp < NUMPIXELS ))

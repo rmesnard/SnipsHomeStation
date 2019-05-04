@@ -9,35 +9,22 @@ import datetime
 import os
 import sys
 import alsaaudio
-
+from notify import
 from snipsTools import *
 
 VERSION = '1.0.0'
 
 config = SnipsConfigParser.read_configuration_file('/usr/share/snips/config/snips.toml')
 config_common = config.get('snips-common')
-config_audio = config.get('snips-audio-player')
+config_notify = config.get('snips-notify')
 
 MQTT_ADDR = str(config_common.get('mqtt')).replace('"', '')
 SITE_ID = str(config_common.get('site_id')).replace('"', '')
 
-AUDIO_OUT = str(config_audio.get('audio_out')).replace('"', '')
-AUDIO_CHANNELS = int(config_audio.get('channels'))
-AUDIO_BITRATE = int(config_audio.get('bitrate'))
-AUDIO_PERIOD = int(config_audio.get('periodsize'))
-
-RECORD_PATH = str(config_audio.get('record_path')).replace('"', '')
-
-stream_play = ""
-stream_record = ""
-
-
-record_running = False
-output_device1 = alsaaudio.PCM(alsaaudio.PCM_PLAYBACK, alsaaudio.PCM_NONBLOCK, AUDIO_OUT)
-output_device1.setchannels(AUDIO_CHANNELS)
-output_device1.setrate(AUDIO_BITRATE)
-output_device1.setformat(alsaaudio.PCM_FORMAT_S16_LE)
-output_device1.setperiodsize(AUDIO_PERIOD)    
+SERIAL_OUT = str(config_notify.get('serial_out')).replace('"', '')
+SERIAL_SPEED = int(config_notify.get('serial_speed'))
+PICHEIGHT = int(config_notify.get('pannel_height'))
+PICWIDTH = int(config_notify.get('pannel_width'))
 
 
 def on_connect(client, userdata, flags, rc):
