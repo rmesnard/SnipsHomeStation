@@ -3,33 +3,52 @@
 // Adafruit NeoPixel library
 
 #include <Adafruit_NeoPixel.h>
+#include <SimpleDHT.h>  
+
 #ifdef __AVR__
  #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
 #endif
 
 // Which pin on the Arduino is connected to the NeoPixels?
-#define PIN        2 // On Trinket or Gemma, suggest changing this to 1
+#define PIN_PIXEL        2 // On Trinket or Gemma, suggest changing this to 1
 
-// How many NeoPixels are attached to the Arduino?
-#define NUMPIXELS 128 // Popular NeoPixel ring size
+#define NUMPIXELS 128 
 #define NUMVERTICAL  8
 #define NUMHORIZON  16
+
+// Temp and humidity
+#define PIN_DTH22  7
+
+// Push Button
+#define PIN_PUSH  5
+
+// RELAY
+#define PIN_RELAY  8
+
+// Contact Open Box & Key
+// #define PIN_KEYLOCK 10
+// #define PIN_BOXOPEN 11
 
 // When setting up the NeoPixel library, we tell it how many pixels,
 // and which pin to use to send signals. Note that for older NeoPixel
 // strips you might need to change the third parameter -- see the
 // strandtest example for more information on possible values.
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN_PIXEL, NEO_GRB + NEO_KHZ800);
 
 int incomingByte = 0;
 int runcommand = 0;
 int indexp = 0;
+
+int pin_push = LOW;
+int pin_key = LOW;
+int pin_box = LOW;
 
 int motifR[NUMPIXELS];
 int motifG[NUMPIXELS];
 int motifB[NUMPIXELS];
 
 bool isshow = false;
+bool waiteffect = false;
 
 #define DELAYVAL 100 // Time (in milliseconds) to pause between pixels
 
@@ -44,19 +63,157 @@ int fps=10;
 unsigned long currentMillis;
 unsigned long previousMillis;
 
+#if defined( PIN_DTH22 )
+  SimpleDHT22 dht22(PIN_DTH22);
+#endif
+
 
 void setup() {
   Serial.begin(9600);
   // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
   // Any other board, you can remove this part (but no harm leaving it):
-#if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
-  clock_prescale_set(clock_div_1);
-#endif
-  // END of Trinket-specific code.
+  #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
+    clock_prescale_set(clock_div_1);
+  #endif
+    // END of Trinket-specific code.
+  
+  #if defined( PIN_PUSH )
+    pinMode(PIN_PUSH,INPUT);
+  #endif
+  
+  #if defined( PIN_KEYLOCK )
+    pinMode(PIN_KEYLOCK,INPUT);
+  #endif
+  
+  #if defined( PIN_BOXOPEN )
+    pinMode(PIN_BOXOPEN,INPUT);
+  #endif
+  
+  #if defined( PIN_RELAY )
+    pinMode(PIN_RELAY,OUTPUT);
+  #endif
+
 
   pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-
   pixels.clear();
+
+  showtstart();
+  
+}
+
+#if defined( PIN_DTH22 )
+
+void checkDTH22()
+{
+  float temperature = 0;
+  float humidity = 0;
+  int err = SimpleDHTErrSuccess;
+  err = dht22.read2(&temperature, &humidity, NULL);
+  if ( err == SimpleDHTErrSuccess )
+  {
+  Serial.print("T.");
+  Serial.print((float)temperature); Serial.print(".H.");
+  Serial.print((float)humidity); Serial.println(".");
+  }
+ 
+}
+#endif
+
+
+void getstatus()
+{
+  int pinstate = LOW;
+#if defined( PIN_DTH22 )
+  checkDTH22();
+#endif
+
+#if defined( PIN_PUSH )
+  pinstate = digitalRead(PIN_PUSH);
+  Serial.print("B");
+  if (pinstate == HIGH )
+    Serial.print("1.");
+  else
+    Serial.println("0.");
+#endif
+
+#if defined( PIN_KEYLOCK )
+  pin_key = digitalRead(PIN_KEYLOCK);
+  Serial.print("K");
+  if ( pin_key == HIGH )
+    Serial.print("1.");
+  else
+    Serial.println("0.");
+#endif
+
+#if defined( PIN_BOXOPEN )
+  pin_box = digitalRead(PIN_BOXOPEN);
+  Serial.print("L");
+  if ( pin_box == HIGH )
+    Serial.print("1.");
+  else
+    Serial.println("0.");
+#endif
+
+
+}
+
+void checkstatus()
+{
+int pinstate = LOW;
+
+#if defined( PIN_PUSH )
+  pinstate = digitalRead(PIN_PUSH);
+  if ( pin_push != pinstate )
+  {  
+  pin_push = pinstate;
+  Serial.print("B");
+  if ( pin_push == HIGH )
+    Serial.print("1.");
+  else
+    Serial.println("0.");
+  }
+  
+#endif
+
+#if defined( PIN_KEYLOCK )
+  pinstate = digitalRead(PIN_KEYLOCK);
+  if ( pin_key != pinstate )
+  {  
+  pin_key = pinstate;
+  Serial.print("K");
+  if ( pin_key == HIGH )
+    Serial.print("1.");
+  else
+    Serial.println("0.");
+  }
+  
+#endif
+
+#if defined( PIN_BOXOPEN )
+  pinstate = digitalRead(PIN_BOXOPEN);
+  if ( pin_box != pinstate )
+  {  
+  pin_box = pinstate;
+  Serial.print("B");
+  if ( pin_box == HIGH )
+    Serial.print("1.");
+  else
+    Serial.println("0.");
+  }
+  
+#endif
+
+}
+void showtstart()
+{
+  pixels.setPixelColor(0, pixels.Color(128,128,128));
+  pixels.setPixelColor(NUMVERTICAL-1, pixels.Color(128,128,128));
+  pixels.setPixelColor(NUMPIXELS-NUMVERTICAL, pixels.Color(128,128,128));
+  pixels.setPixelColor(NUMPIXELS-1, pixels.Color(128,128,128));
+  pixels.show();
+  delay(1000);
+  pixels.clear();
+  pixels.show();
 }
 
 void displaymotif()
@@ -70,18 +227,20 @@ void displaymotif()
      isshow=true;
 }
 
-void clearscreen()
+
+void clearscreen(bool showit)
 {
-      for(int i=0; i<NUMPIXELS; i++) 
-      { 
-            pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+   pixels.clear();
+   for(int i=0; i<NUMPIXELS; i++) 
+   { 
+        //pixels.setPixelColor(i, pixels.Color(0, 0, 0));
             motifR[i] =0;
             motifG[i] = 0;
             motifB[i] = 0;      
-      }
+   }
+   if ( showit )
      pixels.show();   // Send the updated pixel colors to the hardware.
-
-     isshow=false;
+   isshow=false;
 }
 
 void scrollleft()
@@ -187,18 +346,57 @@ bool waitnbytes(int nbbytes)
 void loop() {
   //pixels.clear(); // Set all pixel colors to 'off'
 
-    if (Serial.available() > 0) {
+    if ((Serial.available() > 0) && ( ! waiteffect )){
           // read the incoming byte:
           incomingByte = Serial.read();
 
-          if (incomingByte == 'C') 
-            clearscreen();
-            
-          if (incomingByte == 'S') 
-            displaymotif();
+          if (incomingByte == 'W') 
+          {
+            // wait end of effect ( not for infinite scrolling )
+            if ( scrollx != 255 ) 
+              waiteffect = true;
+          }
 
+          if (incomingByte == 'G') 
+          {
+            // Get Status
+            getstatus();
+          }
+
+          if (incomingByte == 'O') 
+          {
+            if ( waitnbytes(2) )
+            {
+              int newrelay = getHex();
+              if ( newrelay == 0 )
+                digitalWrite(PIN_RELAY,LOW);
+              else
+                digitalWrite(PIN_RELAY,HIGH);
+            }          
+          }
+
+          if (incomingByte == 'C') 
+          {
+            // Clear Display
+            clearscreen(true);
+            scrollx=0;
+          }
+
+          if (incomingByte == 'E') 
+          {
+            // Erase dislay ( erase buffer but not the display )
+            clearscreen(false);
+            scrollx=0;
+          }
+
+          if (incomingByte == 'S') 
+          {
+            // show image
+            displaymotif();
+          }
           if (incomingByte == 'L')
           { 
+            // scroll left xx steps yy fps
             scroll='L';
             if ( waitnbytes(4) )
             {
@@ -209,6 +407,7 @@ void loop() {
 
           if (incomingByte == 'R') 
           { 
+            // scroll right xx steps yy fps
             scroll='R';
             if ( waitnbytes(4) )
             {
@@ -232,7 +431,7 @@ void loop() {
           
           if (incomingByte == 'P') 
           {
-            // Define Pixel color
+            // Define Pixel color  xx pix id  rr gg bb color
             if ( waitnbytes(8) )
             {
               indexp = getHex();
@@ -265,4 +464,12 @@ void loop() {
 
       }         
   }
+
+if ( scrollx <= 0)
+  waiteffect = false;
+
+// Check Input
+
+checkstatus();
+  
 }
