@@ -17,6 +17,15 @@ class Notify(object):
     __pannel_height = None
     __pannel_width = None
     __arduino = None
+    __inputcmds = False
+    commandbuffer = ""
+    
+    buttonclick01_change = False
+    buttonclick02_change = False
+    buttonclick03_change = False
+    buttonclick01_status = 0
+    buttonclick02_status = 0
+    buttonclick03_status = 0
 
     def init(self,serialout,serialspeed,pannelh,pannelw):
         self.__serial_out = serialout
@@ -26,10 +35,7 @@ class Notify(object):
         self.__arduino = serial.Serial(self.__serial_out,self.__serial_speed, timeout=1)
         time.sleep(2) 
 
-    def test(self,texte):
-        self.__arduino.write(texte.encode())
-        
-    def serial_print(self,serialdata,repeat=1):
+    def serial_print(self,serialdata,repeat=1,fileoutput=False):
 
         commands = serialdata.split('.')
         for nb in range(repeat):
@@ -38,22 +44,20 @@ class Notify(object):
                 self.__arduino.write(cmd.encode())
                 time.sleep(0.01) 
 
-        #f = open("arduino.txt", "w")
-        #for  nb in range(repeat):
-        #    f.write(serialdata)
-        #f.close()
+        if fileoutput:
+            f = open("outfile.sef", "w")
+            for  nb in range(repeat):
+                f.write(serialdata)
+            f.close()
 
-        #hello = self.__arduino.readline()
-        #print(hello)
-
-    def scrollright(self,steps,fps):
+    def scroll_right(self,steps,fps):
         serialout = 'R'
         serialout += format(steps, '02x')
         serialout += format(fps, '02x')
         serialout += '.'
         self.serial_print(serialout)
 
-    def scrollleft(self,steps,fps):
+    def scroll_left(self,steps,fps):
         serialout = 'L'
         serialout += format(steps, '02x')
         serialout += format(fps, '02x')
@@ -64,10 +68,59 @@ class Notify(object):
     def clean(self):
         self.serial_print('C.',2)
 
-    def serial_get(self,command):
-        self.__arduino.write(command.encode())
-        line = self.__arduino.readline()
-        return (line)
+    def check(self):
+        if self.__arduino.in_waiting:
+            __inputcmds = True
+        else:
+            __inputcmds = False
+        return __inputcmds
+
+    def serial_get(self):
+        seq = []
+        while self.__arduino.in_waiting:
+            for c in self.__arduino.read():
+                seq.append(chr(c)) #convert from ANSII
+        self.commandbuffer = ''.join(str(v) for v in seq) #Make a string from array
+
+    def process_cmds(self):
+        commands = self.commandbuffer.split('.')
+        for cmd in commands:
+            print(cmd)
+            if cmd == 'B0' :
+                if self.buttonclick01_status == 1:
+                    self.buttonclick01_change = True
+                self.buttonclick01_status = 0
+            if cmd == 'B1' :
+                if self.buttonclick01_status == 0:
+                    self.buttonclick01_change = True
+                self.buttonclick01_status = 1
+            if cmd == 'K0' :
+                if self.buttonclick02_status == 1:
+                    self.buttonclick02_change = True
+                self.buttonclick02_status = 0
+            if cmd == 'K1' :
+                if self.buttonclick02_status == 0:
+                    self.buttonclick02_change = True
+                self.buttonclick02_status = 1
+            if cmd == 'L0' :
+                if self.buttonclick03_status == 1:
+                    self.buttonclick03_change = True
+                self.buttonclick03_status = 0
+            if cmd == 'L1' :
+                if self.buttonclick03_status == 0:
+                    self.buttonclick03_change = True
+                self.buttonclick03_status = 1 
+
+    def update_status(self):
+        self.serial_get()
+        self.process_cmds()
+
+    def get_status(self):
+        serialout = 'G.'
+        self.serial_print(serialout)
+        time.sleep(0.5)
+        self.check()
+        self.serial_get()
 
     def load_image(self,filename):
         im = Image.open(filename)
@@ -79,30 +132,30 @@ class Notify(object):
         rgb_im = im.convert('RGB')
         return(rgb_im)
 
-    def file_print(self,filename,repeat=1):
+    def print_file(self,filename,repeat=1):
         f = open(filename, "r")
         contents = f.read()
         f.close()
         self.serial_print(contents,repeat)
 
-    def generate_image_serial(self,rgbimage):
+    def generate_image_serial(self,rgbimage,fileoutput=False):
         serialout = ""
         idx=0
         for x in range(self.__pannel_width):
             for y in range(self.__pannel_height):
                 r, g, b = rgbimage.getpixel((x, self.__pannel_height - y - 1))
-                if ( r+g+b != 0 ):
-                    serialout += 'P'
-                    serialout += format(idx, '02x')
-                    serialout += format(r, '02x')
-                    serialout += format(g, '02x')
-                    serialout += format(b, '02x')
-                    serialout += '.'
+
+                serialout += 'P'
+                serialout += format(idx, '02x')
+                serialout += format(r, '02x')
+                serialout += format(g, '02x')
+                serialout += format(b, '02x')
+                serialout += '.'
                 idx+=1
         serialout += 'S.'
-        self.serial_print(serialout)
+        self.serial_print(serialout,fileoutput)
 
-    def generate_scroll_left_anim_serial(self,filename):
+    def generate_scroll_left_anim_serial(self,filename,fileoutput=False):
         serialout = ""
         im = Image.open(filename)
 
@@ -142,9 +195,9 @@ class Notify(object):
                 serialout += '.'
                 idx+=1
         serialout += 'S.'
-        self.serial_print(serialout)
+        self.serial_print(serialout,fileoutput)
 
-    def generate_anim_serial(self,filename):
+    def generate_anim_serial(self,filename,fileoutput=False):
         serialout = ""
         im = Image.open(filename)
 
@@ -168,7 +221,7 @@ class Notify(object):
                         serialout += '.'
                     idx+=1
             serialout += 'S.'
-        self.serial_print(serialout)
+        self.serial_print(serialout,fileoutput)
 
 
     def effect_wave(self,colorR,colorG,colorB,speed):

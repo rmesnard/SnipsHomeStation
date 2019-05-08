@@ -69,7 +69,7 @@ unsigned long previousMillis;
 
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(57600);
   // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
   // Any other board, you can remove this part (but no harm leaving it):
   #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
@@ -167,7 +167,7 @@ int pinstate = LOW;
   {  
   pin_push = pinstate;
   Serial.print("B");
-  if ( pin_push == HIGH )
+  if ( pin_push == LOW )
     Serial.print("1.");
   else
     Serial.println("0.");
@@ -181,7 +181,7 @@ int pinstate = LOW;
   {  
   pin_key = pinstate;
   Serial.print("K");
-  if ( pin_key == HIGH )
+  if ( pin_key == LOW )
     Serial.print("1.");
   else
     Serial.println("0.");
@@ -195,7 +195,7 @@ int pinstate = LOW;
   {  
   pin_box = pinstate;
   Serial.print("B");
-  if ( pin_box == HIGH )
+  if ( pin_box == LOW )
     Serial.print("1.");
   else
     Serial.println("0.");
@@ -339,7 +339,6 @@ bool waitnbytes(int nbbytes)
     if ( timeout < 100 )
        return true;
 
-    Serial.println("timeout"); 
     return false;
 }
 
@@ -373,6 +372,12 @@ void loop() {
               else
                 digitalWrite(PIN_RELAY,HIGH);
             }          
+          }
+
+          if (incomingByte == 'K') 
+          {
+            showtstart();
+            isshow=false;
           }
 
           if (incomingByte == 'C') 
