@@ -2,6 +2,8 @@
 // Released under the GPLv3 license to match the rest of the
 // Adafruit NeoPixel library
 
+#define SERIAL_RX_BUFFER_SIZE 512
+
 #include <Adafruit_NeoPixel.h>
 #include <SimpleDHT.h>  
 
@@ -35,17 +37,17 @@
 // strandtest example for more information on possible values.
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN_PIXEL, NEO_GRB + NEO_KHZ800);
 
-int incomingByte = 0;
-int runcommand = 0;
-int indexp = 0;
+byte incomingByte = 0;
+byte runcommand = 0;
+byte indexp = 0;
 
-int pin_push = LOW;
-int pin_key = LOW;
-int pin_box = LOW;
+byte pin_push = LOW;
+byte pin_key = LOW;
+byte pin_box = LOW;
 
-int motifR[NUMPIXELS];
-int motifG[NUMPIXELS];
-int motifB[NUMPIXELS];
+byte motifR[NUMPIXELS];
+byte motifG[NUMPIXELS];
+byte motifB[NUMPIXELS];
 
 bool isshow = false;
 bool waiteffect = false;
@@ -55,10 +57,11 @@ bool waiteffect = false;
 char hexb[3];
 
 // default light intensity 50 %
-int intensity = 50;
-int scrollx =0;
+byte intensity = 50;
+byte scrollx =0;
 char scroll = 'L';
-int fps=10;
+byte fps=10;
+byte roll=0;
 
 unsigned long currentMillis;
 unsigned long previousMillis;
@@ -111,9 +114,24 @@ void checkDTH22()
   err = dht22.read2(&temperature, &humidity, NULL);
   if ( err == SimpleDHTErrSuccess )
   {
-  Serial.print("T.");
-  Serial.print((float)temperature); Serial.print(".H.");
-  Serial.print((float)humidity); Serial.println(".");
+    float value = 123.45;
+    int ival = (int)temperature;
+    int frac = (temperature - ival) * 100;
+    Serial.print("T");
+    Serial.print(ival);
+    Serial.print(",");
+    if (frac < 10) 
+      Serial.print("0");
+    Serial.print(frac);
+    Serial.print(".H");
+    ival = (int)humidity;
+    frac = (humidity - ival) * 100;
+    Serial.print(ival);
+    Serial.print(",");
+    if (frac < 10) 
+      Serial.print("0");
+    Serial.print(frac);
+    Serial.println(".");
   }
  
 }
@@ -243,20 +261,29 @@ void clearscreen(bool showit)
    isshow=false;
 }
 
+int pixIt(int icolor)
+{
+   int res = (int) (icolor * intensity ) / 100;
+   return res;
+}
+
 void scrollleft()
 {
-      // store left line
-      int memoR[NUMVERTICAL];
-      int memoG[NUMVERTICAL];
-      int memoB[NUMVERTICAL];
-      
-      for(int i=0; i<NUMVERTICAL; i++) 
-      { 
-        memoR[i] = motifR[i];
-        memoG[i] = motifG[i];
-        memoB[i] = motifB[i];
-      }      
-  
+      byte memoR[NUMVERTICAL];
+      byte memoG[NUMVERTICAL];
+      byte memoB[NUMVERTICAL];
+
+      if ( roll == 1 )
+      {
+        // store left line
+        for(int i=0; i<NUMVERTICAL; i++) 
+        { 
+          memoR[i] = motifR[i];
+          memoG[i] = motifG[i];
+          memoB[i] = motifB[i];
+        }      
+      }
+
       for(int i=0; i<NUMPIXELS-NUMVERTICAL; i++) 
       { 
         motifR[i] = motifR[i+NUMVERTICAL];
@@ -265,37 +292,37 @@ void scrollleft()
         pixels.setPixelColor(i, pixels.Color(pixIt(motifR[i]), pixIt(motifG[i]), pixIt(motifB[i])));
       }
 
-      for(int i=0; i<NUMVERTICAL; i++) 
-      { 
-        motifR[i+NUMPIXELS-NUMVERTICAL] = memoR[i];
-        motifG[i+NUMPIXELS-NUMVERTICAL] = memoG[i];
-        motifB[i+NUMPIXELS-NUMVERTICAL] = memoB[i];
-        pixels.setPixelColor(i+NUMPIXELS-NUMVERTICAL, pixels.Color(pixIt(memoR[i]),pixIt(memoG[i]),pixIt(memoB[i])));
-      }
-      
+      if ( roll == 1 )
+      {
+        for(int i=0; i<NUMVERTICAL; i++) 
+        { 
+          motifR[i+NUMPIXELS-NUMVERTICAL] = memoR[i];
+          motifG[i+NUMPIXELS-NUMVERTICAL] = memoG[i];
+          motifB[i+NUMPIXELS-NUMVERTICAL] = memoB[i];
+          pixels.setPixelColor(i+NUMPIXELS-NUMVERTICAL, pixels.Color(pixIt(memoR[i]),pixIt(memoG[i]),pixIt(memoB[i])));
+        }
+      }      
      
      pixels.show();   // Send the updated pixel colors to the hardware.
 }
 
-int pixIt(int icolor)
-{
-   int res = (int) (icolor * intensity ) / 100;
-   return res;
-}
 
 void scrollright()
 {
-      // store right line
-      int memoR[NUMVERTICAL];
-      int memoG[NUMVERTICAL];
-      int memoB[NUMVERTICAL];
+      byte memoR[NUMVERTICAL];
+      byte memoG[NUMVERTICAL];
+      byte memoB[NUMVERTICAL];
       
-      for(int i=0; i<NUMVERTICAL; i++) 
-      { 
-        memoR[i] = motifR[i+NUMPIXELS-NUMVERTICAL];
-        memoG[i] = motifG[i+NUMPIXELS-NUMVERTICAL];
-        memoB[i] = motifB[i+NUMPIXELS-NUMVERTICAL];
-      }      
+      // store right line
+      if ( roll == 1 )
+      {
+        for(int i=0; i<NUMVERTICAL; i++) 
+        { 
+          memoR[i] = motifR[i+NUMPIXELS-NUMVERTICAL];
+          memoG[i] = motifG[i+NUMPIXELS-NUMVERTICAL];
+          memoB[i] = motifB[i+NUMPIXELS-NUMVERTICAL];
+        }      
+      }
   
       for(int i=NUMPIXELS-NUMVERTICAL-1; i>=0; i--) 
       { 
@@ -306,21 +333,24 @@ void scrollright()
         pixels.setPixelColor(i+NUMVERTICAL, pixels.Color(pixIt(motifR[i]),pixIt(motifG[i]),pixIt(motifB[i])));
       }
 
-      for(int i=0; i<NUMVERTICAL; i++) 
-      { 
-        motifR[i] = memoR[i];
-        motifG[i] = memoG[i];
-        motifB[i] = memoB[i];
-        pixels.setPixelColor(i, pixels.Color(pixIt(memoR[i]), pixIt(memoG[i]),pixIt(memoB[i])));
-      }
+      if ( roll == 1 )
+      {
+        for(int i=0; i<NUMVERTICAL; i++) 
+        { 
+          motifR[i] = memoR[i];
+          motifG[i] = memoG[i];
+          motifB[i] = memoB[i];
+          pixels.setPixelColor(i, pixels.Color(pixIt(memoR[i]), pixIt(memoG[i]),pixIt(memoB[i])));
+        }
+      }     
       
-     
      pixels.show();   // Send the updated pixel colors to the hardware.
 }
 
 int getHex()
 {
   int hexvalue =0;
+  
   hexb[0] = Serial.read();
   hexb[1] = Serial.read();
   hexb[2] = 0;
@@ -403,10 +433,11 @@ void loop() {
           { 
             // scroll left xx steps yy fps
             scroll='L';
-            if ( waitnbytes(4) )
+            if ( waitnbytes(6) )
             {
               scrollx = getHex();
               fps = getHex();
+              roll = getHex();
             }
           }
 
@@ -414,10 +445,11 @@ void loop() {
           { 
             // scroll right xx steps yy fps
             scroll='R';
-            if ( waitnbytes(4) )
+            if ( waitnbytes(6) )
             {
               scrollx = getHex();
               fps = getHex();
+              roll = getHex();              
             }
           }
 

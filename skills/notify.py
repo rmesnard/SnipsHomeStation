@@ -5,6 +5,8 @@ from snipsTools import *
 import time
 from PIL import Image
 from PIL import ImageSequence
+from PIL import ImageDraw
+from PIL import ImageFont
 import serial
 import os
 
@@ -27,6 +29,9 @@ class Notify(object):
     buttonclick02_status = 0
     buttonclick03_status = 0
 
+    temperature = ""
+    humidity = ""
+
     def init(self,serialout,serialspeed,pannelh,pannelw):
         self.__serial_out = serialout
         self.__serial_speed = serialspeed
@@ -36,44 +41,50 @@ class Notify(object):
         time.sleep(2) 
 
     def serial_print(self,serialdata,repeat=1,fileoutput=False):
-
+        
         commands = serialdata.split('.')
         for nb in range(repeat):
             for cmd in commands:
                 #print(cmd)
                 self.__arduino.write(cmd.encode())
-                time.sleep(0.01) 
+                time.sleep(0.04) 
+                #self.__arduino.read()
 
-        if fileoutput:
+        if fileoutput: 
             f = open("outfile.sef", "w")
             for  nb in range(repeat):
                 f.write(serialdata)
             f.close()
 
-    def scroll_right(self,steps,fps):
+    def scroll_right(self,steps,fps,roll=True):
         serialout = 'R'
         serialout += format(steps, '02x')
         serialout += format(fps, '02x')
-        serialout += '.'
+        if roll :
+            serialout += '01.'
+        else:
+            serialout += '00.'
         self.serial_print(serialout)
 
-    def scroll_left(self,steps,fps):
+    def scroll_left(self,steps,fps,roll=True):
         serialout = 'L'
         serialout += format(steps, '02x')
         serialout += format(fps, '02x')
-        serialout += '.'
+        if roll :
+            serialout += '01.'
+        else:
+            serialout += '00.'
         self.serial_print(serialout)
 
-
-    def clean(self):
+    def clear(self):
         self.serial_print('C.',2)
 
     def check(self):
         if self.__arduino.in_waiting:
-            __inputcmds = True
+            self.__inputcmds = True
         else:
-            __inputcmds = False
-        return __inputcmds
+            self.__inputcmds = False
+        return self.__inputcmds
 
     def serial_get(self):
         seq = []
@@ -85,7 +96,6 @@ class Notify(object):
     def process_cmds(self):
         commands = self.commandbuffer.split('.')
         for cmd in commands:
-            print(cmd)
             if cmd == 'B0' :
                 if self.buttonclick01_status == 1:
                     self.buttonclick01_change = True
@@ -110,6 +120,10 @@ class Notify(object):
                 if self.buttonclick03_status == 0:
                     self.buttonclick03_change = True
                 self.buttonclick03_status = 1 
+            if cmd.startswith('T') :
+                self.temperature = cmd[1:]
+            if cmd.startswith('H') :
+                self.humidity = cmd[1:]
 
     def update_status(self):
         self.serial_get()
@@ -118,13 +132,14 @@ class Notify(object):
     def get_status(self):
         serialout = 'G.'
         self.serial_print(serialout)
-        time.sleep(0.5)
+        time.sleep(1)
         self.check()
         self.serial_get()
+        self.process_cmds()
 
     def load_image(self,filename):
         im = Image.open(filename)
-
+        print("load " + filename)
         if (im.width != self.__pannel_width) and (im.height != self.__pannel_height):
             print("resize")
             im = im.resize((self.__pannel_width,self.__pannel_height))
@@ -132,8 +147,28 @@ class Notify(object):
         rgb_im = im.convert('RGB')
         return(rgb_im)
 
+    def print_text(self):
+        # make a blank image for the text, initialized to transparent text color
+        imtxt = Image.new('RGBA', (16 ,8), (0,0,0,0))
+
+        # get a font
+        fnt = ImageFont.truetype('/usr/share/snips/fonts/lucon.ttf', 8)
+        # get a drawing context
+        imdraw = ImageDraw.Draw(imtxt)
+
+        # draw text, full opacity
+        imdraw.text((0,0), "88:88", font=fnt, fill=(255,255,255,255))
+
+        rgb_im = imtxt.convert('RGB')
+        os.remove("gen.gif")
+        #rgb_im = rgb_im.resize((self.__pannel_width,self.__pannel_height))
+
+        self.generate_image_serial(rgb_im)
+        rgb_im.save("gen.gif")
+
     def print_file(self,filename,repeat=1):
         f = open(filename, "r")
+        print("print " + filename)
         contents = f.read()
         f.close()
         self.serial_print(contents,repeat)
@@ -146,14 +181,14 @@ class Notify(object):
                 r, g, b = rgbimage.getpixel((x, self.__pannel_height - y - 1))
 
                 serialout += 'P'
-                serialout += format(idx, '02x')
-                serialout += format(r, '02x')
-                serialout += format(g, '02x')
-                serialout += format(b, '02x')
+                serialout += format(idx, '02X')
+                serialout += format(r, '02X')
+                serialout += format(g, '02X')
+                serialout += format(b, '02X')
                 serialout += '.'
                 idx+=1
         serialout += 'S.'
-        self.serial_print(serialout,fileoutput)
+        self.serial_print(serialout,1,fileoutput)
 
     def generate_scroll_left_anim_serial(self,filename,fileoutput=False):
         serialout = ""
@@ -174,10 +209,10 @@ class Notify(object):
                 r, g, b = rgb_im.getpixel((x, self.__pannel_height - y - 1))
                 if ( r+g+b != 0 ):
                     serialout += 'P'
-                    serialout += format(idx, '02x')
-                    serialout += format(r, '02x')
-                    serialout += format(g, '02x')
-                    serialout += format(b, '02x')
+                    serialout += format(idx, '02X')
+                    serialout += format(r, '02X')
+                    serialout += format(g, '02X')
+                    serialout += format(b, '02X')
                     serialout += '.'
                 idx+=1
         serialout += 'S.'
@@ -188,10 +223,10 @@ class Notify(object):
             for y in range(self.__pannel_height):
                 r, g, b = rgb_im.getpixel((x+offset, self.__pannel_height - y - 1))
                 serialout += 'P'
-                serialout += format(idx, '02x')
-                serialout += format(r, '02x')
-                serialout += format(g, '02x')
-                serialout += format(b, '02x')
+                serialout += format(idx, '02X')
+                serialout += format(r, '02X')
+                serialout += format(g, '02X')
+                serialout += format(b, '02X')
                 serialout += '.'
                 idx+=1
         serialout += 'S.'
@@ -214,10 +249,10 @@ class Notify(object):
                     r, g, b = rgb_im.getpixel((x, self.__pannel_height - y - 1))
                     if ( r+g+b != 0 ):
                         serialout += 'P'
-                        serialout += format(idx, '02x')
-                        serialout += format(r, '02x')
-                        serialout += format(g, '02x')
-                        serialout += format(b, '02x')
+                        serialout += format(idx, '02X')
+                        serialout += format(r, '02X')
+                        serialout += format(g, '02X')
+                        serialout += format(b, '02X')
                         serialout += '.'
                     idx+=1
             serialout += 'S.'
@@ -234,26 +269,21 @@ class Notify(object):
         currentintensity= 255
         while leneffect > 0 :
             serialout = ""
-            for y in range(self.__pannel_height):
-                serialout += 'P'
-                serialout += format( y, '02X')
-                serialout += format( r, '02X')
-                serialout += format( g, '02X')
-                serialout += format( b, '02X')
-                serialout += '.'
-            serialout += 'S.'
-            currentintensity -= speed
-            if ( currentintensity < 0 ):
-                currentintensity =0
-                r=0
-                g=0
-                b=0
-            else:
+            if ( currentintensity > 0 ):
+                for y in range(self.__pannel_height):
+                    serialout += 'P'
+                    serialout += format( y, '02X')
+                    serialout += format( r, '02X')
+                    serialout += format( g, '02X')
+                    serialout += format( b, '02X')
+                    serialout += '.'
+                serialout += 'S.'
+                currentintensity -= speed
                 r = int((r * currentintensity ) / 255)
                 g = int((g * currentintensity ) / 255)
                 b = int((b * currentintensity ) / 255)
             leneffect -= 1
-            serialout += 'R0112.'
+            serialout += 'R011200.'
             self.serial_print(serialout)
         #print(serialout)
         
