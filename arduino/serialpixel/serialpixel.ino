@@ -9,14 +9,14 @@
 const PROGMEM char font8x8_basic[] = {
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0000 (nul)
      0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C,   // U+0001  (eye ball full )
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0002
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0003
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0004
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0005
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0006
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0007
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0008
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0009
+     0x2C, 0x40, 0x02, 0x81, 0x81, 0x01, 0x20, 0x34,   // U+0002   ( red eye pink )
+     0x10, 0x02, 0xC1, 0x00, 0x00, 0x82, 0x42, 0x08,   // U+0003   ( red eye red )
+     0x3C, 0x42, 0xBD, 0xA5, 0xA5, 0xBD, 0x42, 0x3C,   // U+0004   ( hypno eye 1)
+     0x00, 0x3C, 0x42, 0x5A, 0x5A, 0x42, 0x3C, 0x00,   // U+0005   ( hypno eye 2)
+     0x24, 0x42, 0x81, 0x00, 0x00, 0x81, 0x42, 0x24,	// Char 006  ( Gradient eye 1 )
+	   0x18, 0x24, 0x42, 0x81, 0x81, 0x42, 0x24, 0x18,	// Char 007  ( Gradient eye 2 )
+	   0x00, 0x18, 0x24, 0x42, 0x42, 0x24, 0x18, 0x00,	// Char 008  ( Gradient eye 3 )
+   	 0x00, 0x00, 0x18, 0x3C, 0x3C, 0x18, 0x00, 0x00,	// Char 009  ( Gradient eye 4 )
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000A
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000B
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000C
@@ -161,6 +161,7 @@ int currentY = 0;
 int eyexL = LED_ROW / 8;
 int eyexR = eyexL + 16;
 int eyeSk = 0;
+
 
 
 // Declare our NeoPixel strip object:
@@ -526,9 +527,82 @@ void CylonBounce(int EyeSize, int SpeedDelay, int ReturnDelay){
 
 // 
 
-void displayEye(int starcol, int offsetX, int offsetY) 
+void displayEye(int starcol, int offsetX, int offsetY,int skin) 
 {
-  rendertxt(0x7F,starcol);  
+
+  if ( skin == 0 )
+  {
+    // default skin current color used
+    rendertxt(0x01,starcol);  
+  }
+  else if ( skin == 1 )    
+  {
+    //  skin tired eye
+    currentcolor = strip.Color(100, 100, 100);
+    rendertxt(0x01,starcol);  
+    currentcolor = strip.Color(255, 128, 128);
+    rendertxt(0x02,starcol);  
+    currentcolor = strip.Color(255, 0, 0);
+    rendertxt(0x03,starcol);  
+  }
+  else if ( skin == 2 )    
+  {
+    //  skin hypno eye step 1
+    currentcolor = strip.Color(200, 200, 0);
+    rendertxt(0x04,starcol);  
+  //  currentcolor = strip.Color(200,200, 0);
+  //  rendertxt(0x05,starcol);  
+  }
+    else if ( skin == 3 )    
+  {
+    //  skin hypno eye step 2
+    currentcolor = strip.Color(200, 200, 0);
+    rendertxt(0x05,starcol);  
+  //  currentcolor = strip.Color(200, 200, 200);
+  //  rendertxt(0x05,starcol);  
+  }
+    else if ( skin == 4 )    
+  {
+    //  skin gradient sauron eye
+    currentcolor = strip.Color(136, 0, 21);
+    rendertxt(0x06,starcol);  
+    currentcolor = strip.Color(237, 28, 36);
+    rendertxt(0x07,starcol);  
+    currentcolor = strip.Color(255, 127, 39);
+    rendertxt(0x08,starcol);  
+    currentcolor = strip.Color(255, 201, 14);
+    rendertxt(0x09,starcol);  
+  }
+    else if ( skin == 5 )    
+  {
+    //  skin gradient blue eye
+    currentcolor = strip.Color(230, 230,230);
+    rendertxt(0x01,starcol);  
+    currentcolor = strip.Color(153, 217, 234);
+    rendertxt(0x08,starcol);  
+    currentcolor = strip.Color(0, 162, 232);
+    rendertxt(0x09,starcol);  
+  }
+    else if ( skin == 6 )    
+  {
+    //  skin gradient green eye
+    currentcolor = strip.Color(230, 230,230);
+    rendertxt(0x01,starcol);  
+    currentcolor = strip.Color(181, 230, 29);
+    rendertxt(0x08,starcol);  
+    currentcolor = strip.Color(34, 117, 76);
+    rendertxt(0x09,starcol);  
+  }
+    else if ( skin == 7 )    
+  {
+    //  skin gradient green eye
+    currentcolor = strip.Color(230, 230,230);
+    rendertxt(0x01,starcol);  
+    currentcolor = strip.Color(185, 122, 27);
+    rendertxt(0x08,starcol);  
+    currentcolor = strip.Color(136, 0, 21);
+    rendertxt(0x09,starcol);  
+  }
 
   strip.setPixelColor( ( offsetX + 3)  * LED_COL  + offsetY + (starcol*8), strip.Color(0, 0, 0));
   strip.setPixelColor( ( offsetX + 4)  * LED_COL  + offsetY + (starcol*8), strip.Color(0, 0, 0));
@@ -540,8 +614,44 @@ void displayEye(int starcol, int offsetX, int offsetY)
 void displayEyes(int offsetX, int offsetY) 
 {
   strip.clear();
-  displayEye(eyexL,offsetX,offsetY);
-  displayEye(eyexR,offsetX,offsetY);
+
+  if ( eyeSk == 0 )
+  {
+    // default skin current color used
+    displayEye(eyexL,offsetX,offsetY,0);
+    displayEye(eyexR,offsetX,offsetY,0);
+  }
+  else if ( eyeSk == 1 )    
+  {
+    //  skin tired eye
+    displayEye(eyexL,offsetX,offsetY,1);
+    displayEye(eyexR,offsetX,offsetY,1);
+  }
+  else if ( eyeSk == 2 )    
+  {
+    // sauron eye
+    displayEye(eyexL,offsetX,offsetY,4);
+    displayEye(eyexR,offsetX,offsetY,4);
+  }
+  else if ( eyeSk == 3 )    
+  {
+    // blue eye
+    displayEye(eyexL,offsetX,offsetY,5);
+    displayEye(eyexR,offsetX,offsetY,5);
+  }
+  else if ( eyeSk == 4 )    
+  {
+    // green eye
+    displayEye(eyexL,offsetX,offsetY,6);
+    displayEye(eyexR,offsetX,offsetY,6);
+  }
+  else if ( eyeSk == 5 )    
+  {
+    // veron eye
+    displayEye(eyexL,offsetX,offsetY,7);
+    displayEye(eyexR,offsetX,offsetY,5);
+  }
+
 
   currentX = offsetX;
   currentY =  offsetY;
