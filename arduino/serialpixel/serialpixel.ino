@@ -153,7 +153,11 @@ const PROGMEM char font8x8_basic[] = {
 
 char cmdBuffer[CMDBUFSIZE];
 int animation = 0;
-uint32_t currentcolor;
+
+int currentcolorR = 100;
+int currentcolorG = 100;
+int currentcolorB = 100;
+
 
 // default eye on center
 int currentX = 0;
@@ -190,7 +194,7 @@ void setup() {
   strip.show();            // Turn OFF all pixels ASAP
   strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
 
-  currentcolor = strip.Color(100, 100, 100);
+  
   Serial.begin(57600);
    Serial.println("Started");
 }
@@ -224,10 +228,10 @@ void loop() {
       {
         cmdBuffer[5]= '\0';
         cmdBuffer[9]= '\0';
-        int colorR =  atoi(&cmdBuffer[2]);
-        int colorG =  atoi(&cmdBuffer[6]);
-        int colorB =  atoi(&cmdBuffer[10]);
-        currentcolor = strip.Color(colorR, colorG, colorB);
+        currentcolorR =  atoi(&cmdBuffer[2]);
+        currentcolorG =  atoi(&cmdBuffer[6]);
+        currentcolorB =  atoi(&cmdBuffer[10]);
+        
       }
         
       if (cmdBuffer[0] == 'T')
@@ -239,13 +243,13 @@ void loop() {
       {
         int animidx=  atoi(&cmdBuffer[2]);
         if ( animidx == 1 )
-          theaterChase(currentcolor,50);
+          theaterChase(50);
         if ( animidx == 2 )
           theaterChaseRainbow(50);
         if ( animidx == 3 )
           rainbow(10);
         if ( animidx == 4 )
-          flash(currentcolor,100);
+          flash(100);
         if ( animidx == 5 )
           CylonBounce(2,20,20);
       }
@@ -254,14 +258,15 @@ void loop() {
       {
         
         int pixelnum = atoi(&cmdBuffer[2]);
-        strip.setPixelColor(pixelnum, currentcolor);
+
+        strip.setPixelColor(pixelnum, strip.Color(currentcolorR, currentcolorG, currentcolorB));
       }
 
       if (cmdBuffer[0] == 'S')
         strip.show();
 
       if (cmdBuffer[0] == 'W')
-        colorWipe(currentcolor, 1 );
+        colorWipe( 1 );
         
       if (cmdBuffer[0] == 'E')
         strip.clear();
@@ -272,7 +277,7 @@ void loop() {
       }
 
       if (cmdBuffer[0] == 'F') {
-        strip.fill(currentcolor);
+        strip.fill();
       }
 
       if (cmdBuffer[0] == 'K') {
@@ -318,6 +323,14 @@ void loop() {
   
 
 }
+
+void setCurrentColor(int red,int green,int blue)
+{
+    currentcolorR=red;
+    currentcolorG=green;
+    currentcolorB=blue;
+}
+
 
 void draw_column(int indxcolumn ) {
 
@@ -388,7 +401,7 @@ void rendertxt(int charnum , int column) {
     int thebit;
     int pixelnum;
     charnum = charnum - 0x20;
-
+    uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
     for (x=0; x < 8; x++) {
         for (y=0; y < 8; y++) {
             pixelnum = ( x * 8 ) + y + ( column * LED_COL );
@@ -405,9 +418,10 @@ void rendertxt(int charnum , int column) {
 // Some functions of our own for creating animated effects -----------------
 
 
-void flash(uint32_t color,int wait) {
+void flash(int wait) {
+    uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
     for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
-      strip.setPixelColor(i, color);         //  Set pixel's color (in RAM)
+      strip.setPixelColor(i, currentcolor);         //  Set pixel's color (in RAM)
     }
     strip.show();                          //  Update strip to match
     delay(wait);                           //  Pause for a moment
@@ -421,9 +435,10 @@ void flash(uint32_t color,int wait) {
 // (as a single 'packed' 32-bit value, which you can get by calling
 // strip.Color(red, green, blue) as shown in the loop() function above),
 // and a delay time (in milliseconds) between pixels.
-void colorWipe(uint32_t color, int wait) {
+void colorWipe( int wait) {
+  uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
   for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
-    strip.setPixelColor(i, color);         //  Set pixel's color (in RAM)
+    strip.setPixelColor(i, currentcolor);         //  Set pixel's color (in RAM)
     strip.show();                          //  Update strip to match
     delay(wait);                           //  Pause for a moment
   }
@@ -432,13 +447,14 @@ void colorWipe(uint32_t color, int wait) {
 // Theater-marquee-style chasing lights. Pass in a color (32-bit value,
 // a la strip.Color(r,g,b) as mentioned above), and a delay time (in ms)
 // between frames.
-void theaterChase(uint32_t color, int wait) {
+void theaterChase( int wait) {
+  uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
   for(int a=0; a<10; a++) {  // Repeat 10 times...
     for(int b=0; b<3; b++) { //  'b' counts from 0 to 2...
       strip.clear();         //   Set all pixels in RAM to 0 (off)
       // 'c' counts up from 'b' to end of strip in steps of 3...
       for(int c=b; c<strip.numPixels(); c += 3) {
-        strip.setPixelColor(c, color); // Set pixel 'c' to value 'color'
+        strip.setPixelColor(c, currentcolor); // Set pixel 'c' to value 'color'
       }
       strip.show(); // Update strip with new contents
       delay(wait);  // Pause for a moment
@@ -496,15 +512,17 @@ void theaterChaseRainbow(int wait) {
 
 void CylonBounce(int EyeSize, int SpeedDelay, int ReturnDelay){
 
+uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
+
   for(int i = 0; i < LED_ROW - EyeSize-2; i++) {
     strip.clear();
-    strip.setPixelColor(i * LED_COL +4, strip.Color(50, 50, 50));
+    strip.setPixelColor(i * LED_COL +4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
     for(int j = 1; j <= EyeSize; j++) {
-      strip.setPixelColor( (i+j) * LED_COL + 4, strip.Color(50, 50, 50));
-      strip.setPixelColor( (i+j) * LED_COL + 4, strip.Color(50, 50, 50));
-      strip.setPixelColor( (i+j) * LED_COL + 4, strip.Color(50, 50, 50));
+      strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
+      strip.setPixelColor( (i+j) * LED_COL + 4, currentcolor);
+      strip.setPixelColor( (i+j) * LED_COL + 2, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
     }
-    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(50, 50, 50));
+    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
     strip.show();
     delay(SpeedDelay);
   }
@@ -513,11 +531,13 @@ void CylonBounce(int EyeSize, int SpeedDelay, int ReturnDelay){
 
   for(int i = LED_ROW - EyeSize-2; i > 0; i--) {
     strip.clear();
-    strip.setPixelColor(i  * LED_COL +4, strip.Color(50, 50, 50));
+    strip.setPixelColor(i  * LED_COL +4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
     for(int j = 1; j <= EyeSize; j++) {
-      strip.setPixelColor((i+j) * LED_COL + 4, strip.Color(50, 50, 50));
+      strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
+      strip.setPixelColor((i+j) * LED_COL + 4, currentcolor);
+      strip.setPixelColor( (i+j) * LED_COL + 2, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
     }
-    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(50, 50, 50));
+    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
     strip.show();
     delay(SpeedDelay);
   }
@@ -537,18 +557,18 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
   }
   else if ( skin == 1 )    
   {
-    //  skin tired eye
-    currentcolor = strip.Color(100, 100, 100);
+    //  skin tired eyes
+    setCurrentColor(100, 100, 100);
     rendertxt(0x01,starcol);  
-    currentcolor = strip.Color(255, 128, 128);
+    setCurrentColor(255, 128, 128);
     rendertxt(0x02,starcol);  
-    currentcolor = strip.Color(255, 0, 0);
+    setCurrentColor(255, 0, 0);
     rendertxt(0x03,starcol);  
   }
   else if ( skin == 2 )    
   {
     //  skin hypno eye step 1
-    currentcolor = strip.Color(200, 200, 0);
+    setCurrentColor(200, 200, 0);
     rendertxt(0x04,starcol);  
   //  currentcolor = strip.Color(200,200, 0);
   //  rendertxt(0x05,starcol);  
@@ -556,7 +576,7 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
     else if ( skin == 3 )    
   {
     //  skin hypno eye step 2
-    currentcolor = strip.Color(200, 200, 0);
+    setCurrentColor(200, 200, 0);
     rendertxt(0x05,starcol);  
   //  currentcolor = strip.Color(200, 200, 200);
   //  rendertxt(0x05,starcol);  
@@ -564,43 +584,43 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
     else if ( skin == 4 )    
   {
     //  skin gradient sauron eye
-    currentcolor = strip.Color(136, 0, 21);
+    setCurrentColor(136, 0, 21);
     rendertxt(0x06,starcol);  
-    currentcolor = strip.Color(237, 28, 36);
+    setCurrentColor(237, 28, 36);
     rendertxt(0x07,starcol);  
-    currentcolor = strip.Color(255, 127, 39);
+    setCurrentColor(255, 127, 39);
     rendertxt(0x08,starcol);  
-    currentcolor = strip.Color(255, 201, 14);
+    setCurrentColor(255, 201, 14);
     rendertxt(0x09,starcol);  
   }
     else if ( skin == 5 )    
   {
     //  skin gradient blue eye
-    currentcolor = strip.Color(230, 230,230);
+    setCurrentColor(230, 230,230);
     rendertxt(0x01,starcol);  
-    currentcolor = strip.Color(153, 217, 234);
+    setCurrentColor(153, 217, 234);
     rendertxt(0x08,starcol);  
-    currentcolor = strip.Color(0, 162, 232);
+    setCurrentColor(0, 162, 232);
     rendertxt(0x09,starcol);  
   }
     else if ( skin == 6 )    
   {
     //  skin gradient green eye
-    currentcolor = strip.Color(230, 230,230);
+    setCurrentColor(230, 230,230);
     rendertxt(0x01,starcol);  
-    currentcolor = strip.Color(181, 230, 29);
+    setCurrentColor(181, 230, 29);
     rendertxt(0x08,starcol);  
-    currentcolor = strip.Color(34, 117, 76);
+    setCurrentColor(34, 117, 76);
     rendertxt(0x09,starcol);  
   }
     else if ( skin == 7 )    
   {
     //  skin gradient green eye
-    currentcolor = strip.Color(230, 230,230);
+    setCurrentColor(230, 230,230);
     rendertxt(0x01,starcol);  
-    currentcolor = strip.Color(185, 122, 27);
+    setCurrentColor(185, 122, 27);
     rendertxt(0x08,starcol);  
-    currentcolor = strip.Color(136, 0, 21);
+    setCurrentColor(136, 0, 21);
     rendertxt(0x09,starcol);  
   }
 
