@@ -34,6 +34,12 @@ create volume :
 sudo docker volume create snips_config
 sudo docker volume create snips_log
 
+sudo docker volume inspect snips_config
+
+/var/lib/docker/volumes/snips_config/_data
+
+sudo cp /var/lib/docker/volumes/snips_config/_data/ledpanel/test.py test.py
+
 #run 
 
 sudo docker run -d --name snips-homestation \
@@ -41,10 +47,11 @@ sudo docker run -d --name snips-homestation \
 -v snips_config:/usr/share/snips \
 --privileged \
 --device=/dev/snd:/dev/snd \
---device=/dev/ttyUSB0 \
+--device=/dev/ttyS1 \
 lijah/snips-homestation
 
 
+--device=/dev/ttyUSB0 \
 #share config 
 
 
