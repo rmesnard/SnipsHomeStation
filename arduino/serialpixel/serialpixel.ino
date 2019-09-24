@@ -160,10 +160,10 @@ int currentcolorB = 100;
 
 
 // default eye on center
-int currentX = 0;
-int currentY = 0;
-int eyexL = LED_ROW / 8;
-int eyexR = eyexL + 16;
+int currentX = 3;
+int currentY = 3;
+int eyexL = LED_ROW / 4;
+int eyexR = eyexL + 10;
 int eyeSk = 0;
 
 
@@ -281,21 +281,31 @@ void loop() {
       }
 
       if (cmdBuffer[0] == 'K') {
-        rendertxt(0x3A,15);
+        rendertxt(cmdBuffer[2],0);
+        rendertxt(cmdBuffer[3],7);
+        rendertxt(0x3A,12);
+        rendertxt(cmdBuffer[5],17);
+        rendertxt(cmdBuffer[6],24);
       }
-      //  Y=c.l.r 
+    
       if (cmdBuffer[0] == 'Y') {
         if (cmdBuffer[2] == '1') {
           // Display default eye   Y=1
-          eyexL = LED_ROW / 8;
-          eyexR = eyexL + 16;
-          displayEyes(0,0);
+          eyexL = LED_ROW / 4;
+          eyexR = eyexL + 10;
+          currentX = 3;
+          currentY = 3;
+          displayEyes(3,3);
         }
         if (cmdBuffer[2] == '2') {
           // Move pupil           Y=2.X.Y
-          int pupx =  atoi(cmdBuffer[4]);          
-          int pupy =  atoi(cmdBuffer[6]);          
-          movePupil(pupx-2,pupy-2,50);
+          cmdBuffer[5]= '\0';
+          cmdBuffer[7]= '\0';          
+          int pupx =  atoi(&cmdBuffer[4]);          
+          int pupy =  atoi(&cmdBuffer[6]);
+          Serial.println(pupx);
+          Serial.println(pupy);          
+          movePupil(pupx,pupy,50);
         }
         if (cmdBuffer[2] == '3') {
           // Move eyes           Y=3.AA.BB
@@ -303,7 +313,7 @@ void loop() {
           cmdBuffer[9]= '\0';
           int neweyexL =  atoi(&cmdBuffer[4]);          
           int neweyexR =  atoi(&cmdBuffer[7]);          
-          moveEyes(neweyexL,neweyexR,50);
+          moveEyes(neweyexL,neweyexR,10);
         }
         if (cmdBuffer[2] == '4') {
           // round spin eye      Y=4.nn
@@ -336,6 +346,7 @@ void draw_column(int indxcolumn ) {
 
   int y;
   int pixelnum = indxcolumn*8;
+  uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
 
   for (y=0; y < 8; y++) {
     strip.setPixelColor(pixelnum++, currentcolor);
@@ -400,11 +411,11 @@ void rendertxt(int charnum , int column) {
     int set;
     int thebit;
     int pixelnum;
-    charnum = charnum - 0x20;
+   
     uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
     for (x=0; x < 8; x++) {
         for (y=0; y < 8; y++) {
-            pixelnum = ( x * 8 ) + y + ( column * LED_COL );
+            pixelnum = ( y * 8 ) + ( 7 - x ) + ( column * LED_COL );
             thebit = pgm_read_byte_near(font8x8_basic + ( charnum * 8 ) + x );
             set = thebit & 1 << y;
             if ( set != 0 )
@@ -516,13 +527,13 @@ uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB)
 
   for(int i = 0; i < LED_ROW - EyeSize-2; i++) {
     strip.clear();
-    strip.setPixelColor(i * LED_COL +4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
+    strip.setPixelColor(i * LED_COL +4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
     for(int j = 1; j <= EyeSize; j++) {
-      strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
+  //    strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
       strip.setPixelColor( (i+j) * LED_COL + 4, currentcolor);
-      strip.setPixelColor( (i+j) * LED_COL + 2, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
+  //    strip.setPixelColor( (i+j) * LED_COL + 5, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
     }
-    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
+    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
     strip.show();
     delay(SpeedDelay);
   }
@@ -531,18 +542,19 @@ uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB)
 
   for(int i = LED_ROW - EyeSize-2; i > 0; i--) {
     strip.clear();
-    strip.setPixelColor(i  * LED_COL +4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
+    strip.setPixelColor(i  * LED_COL +4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
     for(int j = 1; j <= EyeSize; j++) {
-      strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
+    //  strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
       strip.setPixelColor((i+j) * LED_COL + 4, currentcolor);
-      strip.setPixelColor( (i+j) * LED_COL + 2, strip.Color(currentcolorR/50, currentcolorR/50, currentcolorR/50));
+    //  strip.setPixelColor( (i+j) * LED_COL + 5, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
     }
-    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/50, currentcolorG/50, currentcolorB/50));
+    strip.setPixelColor((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
     strip.show();
     delay(SpeedDelay);
   }
  
-  delay(ReturnDelay);
+  strip.clear();
+  strip.show();
 }
 
 // 
@@ -624,10 +636,10 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
     rendertxt(0x09,starcol);  
   }
 
-  strip.setPixelColor( ( offsetX + 3)  * LED_COL  + offsetY + (starcol*8), strip.Color(0, 0, 0));
-  strip.setPixelColor( ( offsetX + 4)  * LED_COL  + offsetY + (starcol*8), strip.Color(0, 0, 0));
-  strip.setPixelColor( ( offsetX + 3)  * LED_COL + offsetY + (starcol*8) + 1, strip.Color(0, 0, 0));
-  strip.setPixelColor( ( offsetX + 4)  * LED_COL + offsetY + (starcol*8) + 1, strip.Color(0, 0, 0));
+  strip.setPixelColor( offsetX * LED_COL + offsetY + (starcol*8), strip.Color(0, 0, 0));
+  strip.setPixelColor( ( offsetX + 1 ) * LED_COL + offsetY + (starcol*8), strip.Color(0, 0, 0));
+  strip.setPixelColor( offsetX * LED_COL + offsetY + (starcol*8) + 1, strip.Color(0, 0, 0));
+  strip.setPixelColor( ( offsetX + 1)  * LED_COL + offsetY + (starcol*8) + 1, strip.Color(0, 0, 0));
 
 }
 
