@@ -7,6 +7,38 @@
 
 
 const PROGMEM char font8x8_basic[] = {
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0000 (nul)
+     0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C,   // U+0001  (eye ball full )
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0002
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0003
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0004
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0005
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0006
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0007
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0008
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0009
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000A
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000B
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000C
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000D
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000E
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000F
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0010
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0011
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0012
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0013
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0014
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0015
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0016
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0017
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0018
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0019
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+001A
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+001B
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+001C
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+001D
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+001E
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+001F  
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0020 (space)
      0x18, 0x3C, 0x3C, 0x18, 0x18, 0x00, 0x18, 0x00,   // U+0021 (!)
      0x36, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0022 (")
@@ -102,7 +134,7 @@ const PROGMEM char font8x8_basic[] = {
      0x18, 0x18, 0x18, 0x00, 0x18, 0x18, 0x18, 0x00,   // U+007C (|)
      0x07, 0x0C, 0x0C, 0x38, 0x0C, 0x0C, 0x07, 0x00,   // U+007D (})
      0x6E, 0x3B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+007E (~)
-     0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C    // U+007F (eye)
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00    // U+007F 
 };
 
 #ifdef __AVR__
@@ -126,6 +158,10 @@ uint32_t currentcolor;
 // default eye on center
 int currentX = 0;
 int currentY = 0;
+int eyexL = LED_ROW / 8;
+int eyexR = eyexL + 16;
+int eyeSk = 0;
+
 
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -148,9 +184,6 @@ void setup() {
   clock_prescale_set(clock_div_1);
 #endif
   // END of Trinket-specific code.
-
-
- 
 
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();            // Turn OFF all pixels ASAP
@@ -244,11 +277,40 @@ void loop() {
       if (cmdBuffer[0] == 'K') {
         rendertxt(0x3A,15);
       }
-
+      //  Y=c.l.r 
       if (cmdBuffer[0] == 'Y') {
-        displayEyes(0,0);
-      }
+        if (cmdBuffer[2] == '1') {
+          // Display default eye   Y=1
+          eyexL = LED_ROW / 8;
+          eyexR = eyexL + 16;
+          displayEyes(0,0);
+        }
+        if (cmdBuffer[2] == '2') {
+          // Move pupil           Y=2.X.Y
+          int pupx =  atoi(cmdBuffer[4]);          
+          int pupy =  atoi(cmdBuffer[6]);          
+          movePupil(pupx-2,pupy-2,50);
+        }
+        if (cmdBuffer[2] == '3') {
+          // Move eyes           Y=3.AA.BB
+          cmdBuffer[6]= '\0';
+          cmdBuffer[9]= '\0';
+          int neweyexL =  atoi(&cmdBuffer[4]);          
+          int neweyexR =  atoi(&cmdBuffer[7]);          
+          moveEyes(neweyexL,neweyexR,50);
+        }
+        if (cmdBuffer[2] == '4') {
+          // round spin eye      Y=4.nn
+          int rdtime =  atoi(&cmdBuffer[4]);          
+          roundSpin(rdtime);
+        }
+        if (cmdBuffer[2] == '5') {
+          // change skin      Y=5.nn
+          eyeSk =  atoi(&cmdBuffer[4]);          
+          displayEyes(currentX,currentY);
+        }
 
+      }
       
     }
   }
@@ -464,12 +526,9 @@ void CylonBounce(int EyeSize, int SpeedDelay, int ReturnDelay){
 
 // 
 
-void displayEye(int eyenum, int offsetX, int offsetY) 
+void displayEye(int starcol, int offsetX, int offsetY) 
 {
-  int starcol = 8*eyenum;
   rendertxt(0x7F,starcol);  
-
-Serial.println(( offsetX + 3)  * LED_COL  + offsetY + starcol );
 
   strip.setPixelColor( ( offsetX + 3)  * LED_COL  + offsetY + (starcol*8), strip.Color(0, 0, 0));
   strip.setPixelColor( ( offsetX + 4)  * LED_COL  + offsetY + (starcol*8), strip.Color(0, 0, 0));
@@ -481,15 +540,15 @@ Serial.println(( offsetX + 3)  * LED_COL  + offsetY + starcol );
 void displayEyes(int offsetX, int offsetY) 
 {
   strip.clear();
-  displayEye(1,offsetX,offsetY);
-  displayEye(2,offsetX,offsetY);
+  displayEye(eyexL,offsetX,offsetY);
+  displayEye(eyexR,offsetX,offsetY);
 
   currentX = offsetX;
   currentY =  offsetY;
   strip.show();
 }
 
-void moveEyes(int newX, int newY, int stepDelay)
+void movePupil(int newX, int newY, int stepDelay)
 {
   // set current position as start position
   int startX = currentX;
@@ -519,10 +578,41 @@ void moveEyes(int newX, int newY, int stepDelay)
   }
 }
 
+void moveEyes(int newColL,int newColR, int stepDelay)
+{
+  // set current position as start position
+  int starteyexL = eyexL;
+  int starteyexR = eyexR;
+ 
+  // eval steps
+  int stepsL = abs(starteyexL - newColL);
+  int stepsR = abs(starteyexR - newColR);
+
+  // need to change at least one position
+  if ((stepsL == 0) && (stepsR == 0))
+    return;
+   
+  // eval direction of movement, # of steps, change per step, perform move
+  int dirL = (newColL >= starteyexL) ? 1 : -1;
+  int dirR = (newColR >= starteyexR) ? 1 : -1;
+  int steps = (stepsL > stepsR) ? stepsL : stepsR;
+  int intX, intY;
+  float changeL = (float)stepsL / (float)steps;
+  float changeR = (float)stepsR / (float)steps;
+  for (int i=1; i<=steps; i++)
+  {
+    eyexL = starteyexL + round(changeL * i * dirL);
+    eyexR = starteyexR + round(changeR * i * dirR);
+    displayEyes(currentX, currentY);
+    delay(stepDelay);
+  }
+}
+
+
 void roundSpin(int times)
 {
   
-  moveEyes(2, 0, 50);
+  movePupil(2, 0, 50);
   delay(500);
   
   for (int i=0; i<times; i++)
