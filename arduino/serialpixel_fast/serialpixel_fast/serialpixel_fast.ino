@@ -1,8 +1,37 @@
-// Serial remote command for Neopixel ( WS2812 )
-// 
+#include <FastLED.h>
 
-    #include <Adafruit_NeoPixel.h>
+FASTLED_USING_NAMESPACE
 
+#define DATA_PIN    6
+//#define CLK_PIN   4
+#define LED_TYPE    WS2812
+#define COLOR_ORDER GRB
+#define NUM_LEDS    256
+#define LED_ROW 32
+#define LED_COL 8
+
+#define CMDBUFSIZE 32   // buffer size for receiving serial commands
+#define BRIGHTNESS          96
+#define FRAMES_PER_SECOND  120
+
+CRGB leds[NUM_LEDS];
+
+char cmdBuffer[CMDBUFSIZE];
+byte animation = 0;
+
+byte currentcolorR = 100;
+byte currentcolorG = 100;
+byte currentcolorB = 100;
+
+// default eye on center
+byte currentX = 3;
+byte currentY = 3;
+byte eyexL = LED_ROW / 4;
+byte eyexR = eyexL + 10;
+byte eyeSk = 0;
+uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+
+uint8_t gCurrentPatternNumber = 0; 
 
 const PROGMEM char font8x8_basic[] = {
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+0000 (nul)
@@ -12,8 +41,8 @@ const PROGMEM char font8x8_basic[] = {
      0x3C, 0x42, 0xBD, 0xA5, 0xA5, 0xBD, 0x42, 0x3C,   // U+0004   ( hypno eye 1)
      0x00, 0x3C, 0x42, 0x5A, 0x5A, 0x42, 0x3C, 0x00,   // U+0005   ( hypno eye 2)
      0x24, 0x42, 0x81, 0x00, 0x00, 0x81, 0x42, 0x24,	// Char 006  ( Gradient eye 1 )
-	   0x18, 0x24, 0x42, 0x81, 0x81, 0x42, 0x24, 0x18,	// Char 007  ( Gradient eye 2 )
-	   0x00, 0x18, 0x24, 0x42, 0x42, 0x24, 0x18, 0x00,	// Char 008  ( Gradient eye 3 )
+	 0x18, 0x24, 0x42, 0x81, 0x81, 0x42, 0x24, 0x18,	// Char 007  ( Gradient eye 2 )
+	 0x00, 0x18, 0x24, 0x42, 0x42, 0x24, 0x18, 0x00,	// Char 008  ( Gradient eye 3 )
    	 0x00, 0x00, 0x18, 0x3C, 0x3C, 0x18, 0x00, 0x00,	// Char 009  ( Gradient eye 4 )
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000A
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // U+000B
@@ -135,77 +164,49 @@ const PROGMEM char font8x8_basic[] = {
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00    // U+007F 
 };
 
-#ifdef __AVR__
- #include <avr/power.h> 
-#endif
 
-// Which pin on the Arduino is connected to the NeoPixels?
-#define LED_PIN    6
-
-// How many NeoPixels are attached to the Arduino?
-#define LED_COUNT 256
-#define LED_ROW 32
-#define LED_COL 8
-
-#define CMDBUFSIZE 16   // buffer size for receiving serial commands
-
-char cmdBuffer[CMDBUFSIZE];
-byte animation = 0;
-
-byte currentcolorR = 100;
-byte currentcolorG = 100;
-byte currentcolorB = 100;
-
-
-// default eye on center
-byte currentX = 3;
-byte currentY = 3;
-byte eyexL = LED_ROW / 4;
-byte eyexR = eyexL + 10;
-byte eyeSk = 0;
-
-
-
-// Declare our NeoPixel strip object:
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-// Argument 1 = Number of pixels in NeoPixel strip
-// Argument 2 = Arduino pin number (most are valid)
-// Argument 3 = Pixel type flags, add together as needed:
-//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
-//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
-//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
-//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
-//   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
-
-
-// setup() function -- runs once at startup --------------------------------
 
 void setup() {
-  // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
-  // Any other board, you can remove this part (but no harm leaving it):
-#if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
-  clock_prescale_set(clock_div_1);
-#endif
-  // END of Trinket-specific code.
 
-  strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
-  strip.show();            // Turn OFF all pixels ASAP
-  strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
-
-  
   Serial.begin(57600);
-   Serial.println("Started");
+  Serial.println("Start");
+   
+  delay(3000); // 3 second delay for recovery
+  
+  // tell FastLED about the LED strip configuration
+  FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+
+  // set master brightness control
+  FastLED.setBrightness(BRIGHTNESS);
 }
 
 
-// loop() function -- runs repeatedly as long as board is on ---------------
+void loop()
+{
+  if ( gCurrentPatternNumber == 1 )
+    confetti();
+  if ( gCurrentPatternNumber == 2 )
+    rainbow();
+  if ( gCurrentPatternNumber == 3 )
+    rainbowWithGlitter();
+  
+  if ( gCurrentPatternNumber != 0 )
+  {
+    // send the 'leds' array out to the actual LED strip
+    FastLED.show();  
+    // insert a delay to keep the framerate modest
+    FastLED.delay(1000/FRAMES_PER_SECOND); 
+  }
 
-void loop() {
+  // do some periodic updates
+  EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
+  EVERY_N_SECONDS( 2 ) { checkSerial(); }
+  
+}
 
 
-  // Read Serial Command  
-  // Format :
-  //  X=nn
+void checkSerial()
+{
 
   if (Serial.available())
   {
@@ -240,42 +241,39 @@ void loop() {
       if (cmdBuffer[0] == 'A')
       {
         int animidx=  atoi(&cmdBuffer[2]);
+        if ( animidx == 0 )
+          gCurrentPatternNumber=0;
         if ( animidx == 1 )
-          theaterChase(50);
+          gCurrentPatternNumber=1;
         if ( animidx == 2 )
-          theaterChaseRainbow(50);
+          gCurrentPatternNumber=2;
         if ( animidx == 3 )
-          rainbow(10);
-        if ( animidx == 4 )
-          flash(100);
-        if ( animidx == 5 )
-          CylonBounce(2,20,20);
+          gCurrentPatternNumber=3;
+Serial.println(gCurrentPatternNumber);
       }
 
       if (cmdBuffer[0] == 'P')
       {
         int pixelnum = atoi(&cmdBuffer[2]);
-        strip.setPixelColor(pixelnum, strip.Color(currentcolorR, currentcolorG, currentcolorB));
+        leds[pixelnum].setRGB(currentcolorR, currentcolorG, currentcolorB);
       }
 
       if (cmdBuffer[0] == 'S')
-        strip.show();
-
-      if (cmdBuffer[0] == 'W')
-        colorWipe( 1 );
+        FastLED.show();
         
       if (cmdBuffer[0] == 'E')
       {
+        gCurrentPatternNumber=0;
+
         if (cmdBuffer[2] == '0') {
-          strip.clear();
+          FastLED.clear();
         }
         else
         {
-          strip.clear();
-          strip.show();
+          FastLED.clear();
+          FastLED.show();
         }
       }
-
 
       if (cmdBuffer[0] == 'R')
       {
@@ -289,10 +287,6 @@ void loop() {
       if (cmdBuffer[0] == 'D') {
         int colnum =  atoi(&cmdBuffer[2]);
         draw_column(colnum);
-      }
-
-      if (cmdBuffer[0] == 'F') {
-        strip.fill();
       }
 
       if (cmdBuffer[0] == 'K') {
@@ -357,26 +351,23 @@ void loop() {
       
     }
   }
+
+}
   
 
-}
 
-void setPixel(int pixelnum,uint32_t pixelcol)
+void setPixelRGB(int pixelnum,int red,int green,int blue)
 {
-  if(( pixelnum >-1 ) & ( pixelnum < LED_COUNT ))
-    strip.setPixelColor(pixelnum, pixelcol);
+  if(( pixelnum >-1 ) & ( pixelnum < NUM_LEDS ))
+    leds[pixelnum].setRGB(red,green,blue);
 }
 
-uint32_t getPixel(int pixelnum)
+void copyPixel(int inpx,int outpx)
 {
-  uint32_t pixelcol;
-  if(( pixelnum >-1 ) & ( pixelnum < LED_COUNT ))
-    pixelcol = strip.getPixelColor(pixelnum);
-  else
-    pixelcol = strip.Color(0, 0, 0);
-
-  return (pixelcol);
+  if(( inpx >-1 ) & ( inpx < NUM_LEDS ) &( outpx >-1 ) & ( outpx < NUM_LEDS ))
+     leds[outpx] = leds[inpx];
 }
+
 
 void setCurrentColor(int red,int green,int blue)
 {
@@ -392,7 +383,7 @@ void draw_column(int indxcolumn ) {
   int pixelnum = indxcolumn*8;
 
   for (y=0; y < 8; y++) {
-    setPixel(pixelnum++, strip.Color(currentcolorR, currentcolorG, currentcolorB));
+    setPixelRGB(pixelnum++, currentcolorR, currentcolorG, currentcolorB);
   }
 
 }
@@ -402,6 +393,7 @@ void rotate_left(int nbstep,int wait) {
 
   int x,y;
   int pixelnum;
+  /*
   uint32_t pixelcol[LED_COL];
   uint32_t copypixel;
   
@@ -416,47 +408,49 @@ void rotate_left(int nbstep,int wait) {
       for (x=0; x < (LED_ROW - 1); x++) {
         for (y=0; y < LED_COL; y++) {
           copypixel = getPixel(pixelnum + LED_COL);
-          setPixel(pixelnum, copypixel);
+          setPixelRGB(pixelnum, copypixel);
           pixelnum++;
         }
       }
     
      for (y=0; y < LED_COL; y++) {
-        setPixel(pixelnum++, pixelcol[y]);
+        setPixelRGB(pixelnum++, pixelcol[y]);
       }
-      strip.show();
+      FastLED.show();
       delay(wait);
    }
+   */
 }
 
 void rotate_right(int nbstep,int wait) {
 
   int x,y;
   int pixelnum;
+  /*
   uint32_t pixelcol[LED_COL];
 
    for (int idx = 0 ; idx < nbstep ; idx++ )
    { 
-      pixelnum = LED_COUNT - LED_COL;
+      pixelnum = NUM_LEDS - LED_COL;
       for (y=0; y < LED_COL; y++) {
         pixelcol[y] = getPixel(y + pixelnum);
       }
     
       for  (x= (LED_ROW - 1) ; x > 0; x--) {
         for (y=0; y < LED_COL; y++) {
-          setPixel(pixelnum, getPixel(pixelnum - LED_COL));
+          setPixelRGB(pixelnum, getPixel(pixelnum - LED_COL));
           pixelnum++;
         }
         pixelnum=pixelnum-( LED_COL * 2);
       }
     
      for (y=0; y < LED_COL; y++) {
-        setPixel(y, pixelcol[y]);
+        setPixelRGB(y, pixelcol[y]);
       }
-      strip.show();
+      FastLED.show();
       delay(wait);
    }
- 
+ */
 }
 
 
@@ -466,15 +460,15 @@ void rendertxt(int charnum , int column) {
     int set;
     int thebit;
     int pixelnum;
-   
-    uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
+ 
+
     for (x=0; x < 8; x++) {
         for (y=0; y < 8; y++) {
             pixelnum = ( y * 8 ) + ( 7 - x ) + ( column * LED_COL );
             thebit = pgm_read_byte_near(font8x8_basic + ( charnum * 8 ) + x );
             set = thebit & 1 << y;
             if ( set != 0 )
-              setPixel(pixelnum, currentcolor);
+              setPixelRGB(pixelnum, currentcolorR, currentcolorG, currentcolorB);
 
         }
 
@@ -489,143 +483,14 @@ void scrollTxt(int charnum,int wait) {
  {
   rotate_left(1,5);
   rendertxt(charnum,colnum);
-  strip.show();
+  FastLED.show();
   delay(wait);   
  }
 }
 
-// Some functions of our own for creating animated effects -----------------
 
 
-void flash(int wait) {
-    uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
-    for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
-      setPixel(i, currentcolor);         //  Set pixel's color (in RAM)
-    }
-    strip.show();                          //  Update strip to match
-    delay(wait);                           //  Pause for a moment
-    strip.clear();
-    strip.show();                          //  Update strip to match
-}
 
-
-// Fill strip pixels one after another with a color. Strip is NOT cleared
-// first; anything there will be covered pixel by pixel. Pass in color
-// (as a single 'packed' 32-bit value, which you can get by calling
-// strip.Color(red, green, blue) as shown in the loop() function above),
-// and a delay time (in milliseconds) between pixels.
-void colorWipe( int wait) {
-  uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
-  for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
-    setPixel(i, currentcolor);         //  Set pixel's color (in RAM)
-    strip.show();                          //  Update strip to match
-    delay(wait);                           //  Pause for a moment
-  }
-}
-
-// Theater-marquee-style chasing lights. Pass in a color (32-bit value,
-// a la strip.Color(r,g,b) as mentioned above), and a delay time (in ms)
-// between frames.
-void theaterChase( int wait) {
-  uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
-  for(int a=0; a<10; a++) {  // Repeat 10 times...
-    for(int b=0; b<3; b++) { //  'b' counts from 0 to 2...
-      strip.clear();         //   Set all pixels in RAM to 0 (off)
-      // 'c' counts up from 'b' to end of strip in steps of 3...
-      for(int c=b; c<strip.numPixels(); c += 3) {
-        setPixel(c, currentcolor); // Set pixel 'c' to value 'color'
-      }
-      strip.show(); // Update strip with new contents
-      delay(wait);  // Pause for a moment
-    }
-  }
-}
-
-// Rainbow cycle along whole strip. Pass delay time (in ms) between frames.
-void rainbow(int wait) {
-  // Hue of first pixel runs 1 complete loops through the color wheel.
-  // Color wheel has a range of 65536 but it's OK if we roll over, so
-  // just count from 0 to 5*65536. Adding 256 to firstPixelHue each time
-  // means we'll make 5*65536/256 = 1280 passes through this outer loop:
-  for(long firstPixelHue = 0; firstPixelHue < 65536; firstPixelHue += 256) {
-    for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
-      // Offset pixel hue by an amount to make one full revolution of the
-      // color wheel (range of 65536) along the length of the strip
-      // (strip.numPixels() steps):
-      int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
-      // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
-      // optionally add saturation and value (brightness) (each 0 to 255).
-      // Here we're using just the single-argument hue variant. The result
-      // is passed through strip.gamma32() to provide 'truer' colors
-      // before assigning to each pixel:
-      setPixel(i, strip.gamma32(strip.ColorHSV(pixelHue)));
-    }
-    strip.show(); // Update strip with new contents
-    delay(wait);  // Pause for a moment
-  }
-}
-
-// Rainbow-enhanced theater marquee. Pass delay time (in ms) between frames.
-void theaterChaseRainbow(int wait) {
-  int firstPixelHue = 0;     // First pixel starts at red (hue 0)
-  for(int a=0; a<30; a++) {  // Repeat 30 times...
-    for(int b=0; b<3; b++) { //  'b' counts from 0 to 2...
-      strip.clear();         //   Set all pixels in RAM to 0 (off)
-      // 'c' counts up from 'b' to end of strip in increments of 3...
-      for(int c=b; c<strip.numPixels(); c += 3) {
-        // hue of pixel 'c' is offset by an amount to make one full
-        // revolution of the color wheel (range 65536) along the length
-        // of the strip (strip.numPixels() steps):
-        int      hue   = firstPixelHue + c * 65536L / strip.numPixels();
-        uint32_t color = strip.gamma32(strip.ColorHSV(hue)); // hue -> RGB
-        setPixel(c, color); // Set pixel 'c' to value 'color'
-      }
-      strip.show();                // Update strip with new contents
-      delay(wait);                 // Pause for a moment
-      firstPixelHue += 65536 / 90; // One cycle of color wheel over 90 frames
-    }
-  }
-}
-
-// CylonBounce
-
-void CylonBounce(int EyeSize, int SpeedDelay, int ReturnDelay){
-
-uint32_t currentcolor = strip.Color(currentcolorR, currentcolorG, currentcolorB);
-
-  for(int i = 0; i < LED_ROW - EyeSize-2; i++) {
-    strip.clear();
-    setPixel(i * LED_COL +4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-    for(int j = 1; j <= EyeSize; j++) {
-  //    strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-      setPixel( (i+j) * LED_COL + 4, currentcolor);
-  //    strip.setPixelColor( (i+j) * LED_COL + 5, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-    }
-    setPixel((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-    strip.show();
-    delay(SpeedDelay);
-  }
-
-  delay(ReturnDelay);
-
-  for(int i = LED_ROW - EyeSize-2; i > 0; i--) {
-    strip.clear();
-    setPixel(i  * LED_COL +4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-    for(int j = 1; j <= EyeSize; j++) {
-    //  strip.setPixelColor( (i+j) * LED_COL + 3, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-      setPixel((i+j) * LED_COL + 4, currentcolor);
-    //  strip.setPixelColor( (i+j) * LED_COL + 5, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-    }
-    setPixel((i+EyeSize+1)*LED_COL + 4, strip.Color(currentcolorR/30, currentcolorG/30, currentcolorB/30));
-    strip.show();
-    delay(SpeedDelay);
-  }
- 
-  strip.clear();
-  strip.show();
-}
-
-// 
 
 void displayEye(int starcol, int offsetX, int offsetY,int skin) 
 {
@@ -704,16 +569,16 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
     rendertxt(0x09,starcol);  
   }
 
-  setPixel( ( offsetX +1 ) * LED_COL + offsetY + (starcol*8) + 1, strip.Color(0, 0, 0));
-  setPixel( ( offsetX + 2 ) * LED_COL + offsetY + (starcol*8) + 1, strip.Color(0, 0, 0));
-  setPixel( ( offsetX + 1 ) * LED_COL + offsetY + (starcol*8) + 2 , strip.Color(0, 0, 0));
-  setPixel( ( offsetX + 2)  * LED_COL + offsetY + (starcol*8) + 2, strip.Color(0, 0, 0));
+  setPixelRGB( ( offsetX +1 ) * LED_COL + offsetY + (starcol*8) + 1, 0, 0, 0);
+  setPixelRGB( ( offsetX + 2 ) * LED_COL + offsetY + (starcol*8) + 1, 0, 0, 0);
+  setPixelRGB( ( offsetX + 1 ) * LED_COL + offsetY + (starcol*8) + 2 , 0, 0, 0);
+  setPixelRGB( ( offsetX + 2)  * LED_COL + offsetY + (starcol*8) + 2, 0, 0, 0);
 
 }
 
 void displayEyes(int offsetX, int offsetY) 
 {
-  strip.clear();
+  FastLED.clear();
 
   if ( eyeSk == 0 )
   {
@@ -755,7 +620,7 @@ void displayEyes(int offsetX, int offsetY)
 
   currentX = offsetX;
   currentY =  offsetY;
-  strip.show();
+  FastLED.show();
 }
 
 void movePupil(int newX, int newY, int stepDelay)
@@ -839,5 +704,62 @@ void roundSpin(int times)
     displayEyes(3, 4); delay(40); if (i==(times-1)) delay(40);
     displayEyes(2, 4); delay(40); if (i==(times-1)) delay(50);
     displayEyes(1, 4); delay(40);
+  }
+}
+
+void rainbow() 
+{
+  // FastLED's built-in rainbow generator
+  fill_rainbow( leds, NUM_LEDS, gHue, 7);
+}
+
+void rainbowWithGlitter() 
+{
+  // built-in FastLED rainbow, plus some random sparkly glitter
+  rainbow();
+  addGlitter(80);
+}
+
+void addGlitter( fract8 chanceOfGlitter) 
+{
+  if( random8() < chanceOfGlitter) {
+    leds[ random16(NUM_LEDS) ] += CRGB::White;
+  }
+}
+
+void confetti() 
+{
+  // random colored speckles that blink in and fade smoothly
+  fadeToBlackBy( leds, NUM_LEDS, 10);
+  int pos = random16(NUM_LEDS);
+  leds[pos] += CHSV( gHue + random8(64), 200, 255);
+}
+
+void sinelon()
+{
+  // a colored dot sweeping back and forth, with fading trails
+  fadeToBlackBy( leds, NUM_LEDS, 20);
+  int pos = beatsin16( 13, 0, NUM_LEDS-1 );
+  leds[pos] += CHSV( gHue, 255, 192);
+}
+
+void bpm()
+{
+  // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
+  uint8_t BeatsPerMinute = 62;
+  CRGBPalette16 palette = PartyColors_p;
+  uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+  for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+}
+
+void juggle() {
+  // eight colored dots, weaving in and out of sync with each other
+  fadeToBlackBy( leds, NUM_LEDS, 20);
+  byte dothue = 0;
+  for( int i = 0; i < 8; i++) {
+    leds[beatsin16( i+7, 0, NUM_LEDS-1 )] |= CHSV(dothue, 200, 255);
+    dothue += 32;
   }
 }
