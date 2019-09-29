@@ -1,4 +1,7 @@
+#define FASTLED_ALLOW_INTERRUPTS 0
+
 #include <FastLED.h>
+#include <SerialCommands.h>
 
 FASTLED_USING_NAMESPACE
 
@@ -12,11 +15,13 @@ FASTLED_USING_NAMESPACE
 
 #define CMDBUFSIZE 32   // buffer size for receiving serial commands
 #define BRIGHTNESS          96
-#define FRAMES_PER_SECOND  120
+#define FRAMES_PER_SECOND  10
 
 CRGB leds[NUM_LEDS];
 
-char cmdBuffer[CMDBUFSIZE];
+char serial_command_buffer_[CMDBUFSIZE];
+SerialCommands serial_commands_(&Serial, serial_command_buffer_, sizeof(serial_command_buffer_), "\r\n", " ");
+
 byte animation = 0;
 
 byte currentcolorR = 100;
@@ -165,24 +170,301 @@ const PROGMEM char font8x8_basic[] = {
 };
 
 
+void cmd_unrecognized(SerialCommands* sender, const char* cmd)
+{
+  sender->GetSerial()->print("Unrecognized command [");
+  sender->GetSerial()->print(cmd);
+  sender->GetSerial()->println("]");
+}
+
+void cmd_show(SerialCommands* sender)
+{
+  FastLED.show();
+  sender->GetSerial()->println("OK - SHOW");
+}
+
+void cmd_clear(SerialCommands* sender)
+{
+  gCurrentPatternNumber=0;
+  FastLED.clear();
+  sender->GetSerial()->println("OK - CLEAR");
+}
+
+void cmd_clean(SerialCommands* sender)
+{
+  gCurrentPatternNumber=0;
+  FastLED.clear();
+  FastLED.show();
+  sender->GetSerial()->println("OK - CLEAN");
+}
+
+void cmd_play_anim(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str == NULL)
+  {
+    sender->GetSerial()->println("ERROR NO_PARAM");
+    return;
+  }
+  FastLED.clear();
+  gCurrentPatternNumber = atoi(param_str);
+
+  sender->GetSerial()->print("OK - SET ANIM ");
+  sender->GetSerial()->println(gCurrentPatternNumber);
+}
+
+void cmd_pixel_draw(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str == NULL)
+  {
+    sender->GetSerial()->println("ERROR NO_PARAM");
+    return;
+  }
+  gCurrentPatternNumber = 0;
+  int pixelnum = atoi(param_str);
+
+  if ((param_str = sender->Next()) != NULL)
+  {
+    currentcolorR = atoi(param_str);
+    if ((param_str = sender->Next()) != NULL)
+      currentcolorG = atoi(param_str);
+    if ((param_str = sender->Next()) != NULL)
+      currentcolorB = atoi(param_str);
+  }
+
+  leds[pixelnum].setRGB(currentcolorR, currentcolorG, currentcolorB);
+  
+  sender->GetSerial()->print("OK - SET PIXEL ");
+  sender->GetSerial()->println(pixelnum);
+}
+
+void cmd_set_color(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str == NULL)
+  {
+    sender->GetSerial()->println("ERROR NO_PARAM");
+    return;
+  }
+  currentcolorR = atoi(param_str);
+
+  if ((param_str = sender->Next()) != NULL)
+  {
+    currentcolorG = atoi(param_str);
+    if ((param_str = sender->Next()) != NULL)
+      currentcolorB = atoi(param_str);
+  }
+  
+  sender->GetSerial()->println("OK - SET COLOR ");
+}
+
+void cmd_draw_line(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str == NULL)
+  {
+    sender->GetSerial()->println("ERROR NO_PARAM");
+    return;
+  }
+  int colnum = atoi(param_str);
+
+  draw_column(colnum);
+  
+  sender->GetSerial()->println("OK - DRAW LINE");
+}
+
+void cmd_eyes_move(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str != NULL)
+  {
+    int eyL =atoi(param_str);
+    if ((param_str = sender->Next()) != NULL)
+      {
+      int eyR = atoi(param_str);
+      moveEyes(eyL,eyR,50);
+      }
+  }
+  else
+  {
+      eyexL = LED_ROW / 4;
+      eyexR = eyexL + 10;
+      eyeSk = 0;
+      currentX = 2;
+      currentY = 2;
+      displayEyes(2,2);
+  }
+  
+  sender->GetSerial()->println("OK - EYES");
+}
+
+void cmd_eyes_pupil(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str != NULL)
+  {
+      int pux =atoi(param_str);
+      if ((param_str = sender->Next()) != NULL)
+      {
+      int puy = atoi(param_str);
+      movePupil(pux,puy,50);
+      }
+  }
+  else
+  {
+      movePupil(2,2,50);
+  }
+  
+  sender->GetSerial()->println("OK - PUPILS");
+}
+
+void cmd_eyes_anim(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str != NULL)
+  {
+      int animC =atoi(param_str);
+      if ((param_str = sender->Next()) != NULL)
+      {
+      int animP = atoi(param_str);
+
+      if (animC == 1)     // round spin eye    
+          roundSpin(animP);
+
+      if (animC == 2)    {
+          // change skin     
+          eyeSk =  animP;          
+          displayEyes(currentX,currentY);
+        }
+      
+      }
+  }
+ 
+  sender->GetSerial()->println("OK - EYES ANIM");
+}
+
+void cmd_clock(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str != NULL)
+  {
+      FastLED.clear();
+      rendertxt(param_str[0],0,false);
+      rendertxt(param_str[1],7,false);
+      rendertxt(param_str[2],13,false);
+      rendertxt(param_str[3],18,false);
+      rendertxt(param_str[4],25,false);
+      FastLED.show();
+  }
+ 
+  sender->GetSerial()->println("OK - CLOCK");
+}
+
+void cmd_text_print(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str != NULL)
+  {
+      int colT = 0;
+      for ( int idx =0; idx < strlen(param_str);idx++)
+      {
+      rendertxt(param_str[idx],colT,false);
+      colT += 8;
+      }  
+  }
+ 
+  sender->GetSerial()->println("OK - TEXT");
+}
+
+
+void cmd_text_scroll(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str != NULL)
+  {
+      for ( int idx =0; idx < strlen(param_str);idx++)
+        scrollTxt(param_str[idx],50);
+  }
+ 
+  sender->GetSerial()->println("OK - SCROLL");
+}
+
+void cmd_rotate(SerialCommands* sender)
+{
+  char* param_str = sender->Next();
+  if (param_str != NULL)
+  {
+    int rotx = atoi(param_str);
+    if ( rotx > 0 )
+      rotate_right(rotx,50);
+    else
+      rotate_left(abs(rotx),50);
+  }
+ 
+  sender->GetSerial()->println("OK - SCROLL");
+}
+
+SerialCommand cmd_show_("SHOW", cmd_show);
+SerialCommand cmd_clear_("CLEAR", cmd_clear);
+SerialCommand cmd_clean_("CLEAN", cmd_clean);
+SerialCommand cmd_play_anim_("PLAY", cmd_play_anim);
+SerialCommand cmd_pixel_draw_("PIXEL", cmd_pixel_draw);
+SerialCommand cmd_set_color_("COLOR", cmd_set_color);
+SerialCommand cmd_draw_line_("LINE", cmd_draw_line);
+SerialCommand cmd_eyes_move_("EYEM", cmd_eyes_move);
+SerialCommand cmd_eyes_pupil_("EYEP", cmd_eyes_pupil);
+SerialCommand cmd_eyes_anim_("EYEA", cmd_eyes_anim);
+SerialCommand cmd_clock_("CLOCK", cmd_clock);
+SerialCommand cmd_text_print_("TEXT", cmd_text_print);
+SerialCommand cmd_text_scroll_("SCROLL", cmd_text_scroll);
+SerialCommand cmd_rotate_("ROT", cmd_rotate);
 
 void setup() {
 
   Serial.begin(57600);
-  Serial.println("Start");
-   
-  delay(3000); // 3 second delay for recovery
+ 
+  delay(1000); // 1 second delay for recovery
   
   // tell FastLED about the LED strip configuration
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
   // set master brightness control
   FastLED.setBrightness(BRIGHTNESS);
+  FastLED.clear(); 
+  FastLED.show(); 
+
+  serial_commands_.SetDefaultHandler(cmd_unrecognized);
+  serial_commands_.AddCommand(&cmd_show_);
+  serial_commands_.AddCommand(&cmd_clear_);
+  serial_commands_.AddCommand(&cmd_clean_);
+  serial_commands_.AddCommand(&cmd_play_anim_);
+  serial_commands_.AddCommand(&cmd_pixel_draw_);
+  serial_commands_.AddCommand(&cmd_set_color_);
+  serial_commands_.AddCommand(&cmd_draw_line_);
+  serial_commands_.AddCommand(&cmd_eyes_move_);
+  serial_commands_.AddCommand(&cmd_eyes_pupil_);
+  serial_commands_.AddCommand(&cmd_eyes_anim_);
+  serial_commands_.AddCommand(&cmd_clock_);
+  serial_commands_.AddCommand(&cmd_text_print_);
+  serial_commands_.AddCommand(&cmd_text_scroll_);
+  serial_commands_.AddCommand(&cmd_rotate_);
+  
+  Serial.println("Ready!");
+  
 }
 
 
 void loop()
 {
+
+  serial_commands_.ReadSerial();
+
+  // do some periodic updates
+  EVERY_N_MILLISECONDS( 20 ) { 
+    
+    gHue++; 
+
   if ( gCurrentPatternNumber == 1 )
     confetti();
   if ( gCurrentPatternNumber == 2 )
@@ -191,169 +473,11 @@ void loop()
     rainbowWithGlitter();
   
   if ( gCurrentPatternNumber != 0 )
-  {
-    // send the 'leds' array out to the actual LED strip
     FastLED.show();  
-    // insert a delay to keep the framerate modest
-    FastLED.delay(1000/FRAMES_PER_SECOND); 
-  }
-
-  // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
-  EVERY_N_SECONDS( 2 ) { checkSerial(); }
-  
-}
-
-
-void checkSerial()
-{
-
-  if (Serial.available())
-  {
-    int charsRead;
-    charsRead = Serial.readBytesUntil('\n', cmdBuffer, sizeof(cmdBuffer) - 1);  //read entire line
-    cmdBuffer[charsRead] = '\0';       // Make it a C string
    
-    
-    if(cmdBuffer[1] != '=' || strlen(cmdBuffer)<3)
-    {
-      Serial.println("KO");
-    }
-    else
-    {
-       Serial.print(">"); Serial.println(cmdBuffer);
-
-      if (cmdBuffer[0] == 'C')
-      {
-        cmdBuffer[5]= '\0';
-        cmdBuffer[9]= '\0';
-        currentcolorR =  atoi(&cmdBuffer[2]);
-        currentcolorG =  atoi(&cmdBuffer[6]);
-        currentcolorB =  atoi(&cmdBuffer[10]);
-        
-      }
-        
-      if (cmdBuffer[0] == 'O')
-      {
-         Serial.println("OK");
-      }
-                
-      if (cmdBuffer[0] == 'A')
-      {
-        int animidx=  atoi(&cmdBuffer[2]);
-        if ( animidx == 0 )
-          gCurrentPatternNumber=0;
-        if ( animidx == 1 )
-          gCurrentPatternNumber=1;
-        if ( animidx == 2 )
-          gCurrentPatternNumber=2;
-        if ( animidx == 3 )
-          gCurrentPatternNumber=3;
-Serial.println(gCurrentPatternNumber);
-      }
-
-      if (cmdBuffer[0] == 'P')
-      {
-        int pixelnum = atoi(&cmdBuffer[2]);
-        leds[pixelnum].setRGB(currentcolorR, currentcolorG, currentcolorB);
-      }
-
-      if (cmdBuffer[0] == 'S')
-        FastLED.show();
-        
-      if (cmdBuffer[0] == 'E')
-      {
-        gCurrentPatternNumber=0;
-
-        if (cmdBuffer[2] == '0') {
-          FastLED.clear();
-        }
-        else
-        {
-          FastLED.clear();
-          FastLED.show();
-        }
-      }
-
-      if (cmdBuffer[0] == 'R')
-      {
-        int nbstep =  atoi(&cmdBuffer[3]);
-        if (cmdBuffer[2] == '0') 
-          rotate_left(nbstep,50);
-        if (cmdBuffer[2] == '1') 
-          rotate_right(nbstep,50);
-      }      
-      
-      if (cmdBuffer[0] == 'D') {
-        int colnum =  atoi(&cmdBuffer[2]);
-        draw_column(colnum);
-      }
-
-      if (cmdBuffer[0] == 'K') {
-        rendertxt(cmdBuffer[2],0);
-        rendertxt(cmdBuffer[3],7);
-        rendertxt(0x3A,12);
-        rendertxt(cmdBuffer[5],17);
-        rendertxt(cmdBuffer[6],24);
-      }
-
-      if (cmdBuffer[0] == 'T') {
-        int colT = 0;
-        for ( int idx =2; idx < strlen(cmdBuffer);idx++)
-        {
-        rendertxt(cmdBuffer[idx],colT);
-        colT += 8;
-        }      
-      }
-
-      if (cmdBuffer[0] == 'U') {
-        for ( int idx =2; idx < strlen(cmdBuffer);idx++)
-          scrollTxt(cmdBuffer[idx],50);
-      }
-
-      if (cmdBuffer[0] == 'Y') {
-        if (cmdBuffer[2] == '1') {
-          // Display default eye   Y=1
-          eyexL = LED_ROW / 4;
-          eyexR = eyexL + 10;
-          currentX = 2;
-          currentY = 2;
-          displayEyes(2,2);
-        }
-        if (cmdBuffer[2] == '2') {
-          // Move pupil           Y=2.X.Y
-          cmdBuffer[5]= '\0';
-          cmdBuffer[7]= '\0';          
-          int pupx =  atoi(&cmdBuffer[4]);          
-          int pupy =  atoi(&cmdBuffer[6]);
-          movePupil(pupx,pupy,50);
-        }
-        if (cmdBuffer[2] == '3') {
-          // Move eyes           Y=3.AA.BB
-          cmdBuffer[6]= '\0';
-          cmdBuffer[9]= '\0';
-          int neweyexL =  atoi(&cmdBuffer[4]);          
-          int neweyexR =  atoi(&cmdBuffer[7]);          
-          moveEyes(neweyexL,neweyexR,10);
-        }
-        if (cmdBuffer[2] == '4') {
-          // round spin eye      Y=4.nn
-          int rdtime =  atoi(&cmdBuffer[4]);          
-          roundSpin(rdtime);
-        }
-        if (cmdBuffer[2] == '5') {
-          // change skin      Y=5.nn
-          eyeSk =  atoi(&cmdBuffer[4]);          
-          displayEyes(currentX,currentY);
-        }
-
-      }
-      
-    }
-  }
-
-}
+  } // slowly cycle the "base color" through the rainbow
   
+}
 
 
 void setPixelRGB(int pixelnum,int red,int green,int blue)
@@ -393,68 +517,66 @@ void rotate_left(int nbstep,int wait) {
 
   int x,y;
   int pixelnum;
-  /*
-  uint32_t pixelcol[LED_COL];
-  uint32_t copypixel;
+  
+  CRGB memoled[LED_COL];
   
    for (int idx = 0 ; idx < nbstep ; idx++ )
    { 
       pixelnum = 0;
   
       for (y=0; y < LED_COL; y++) {
-        pixelcol[y] = getPixel(y);
+        memoled[y] = leds[y];
       }
     
       for (x=0; x < (LED_ROW - 1); x++) {
         for (y=0; y < LED_COL; y++) {
-          copypixel = getPixel(pixelnum + LED_COL);
-          setPixelRGB(pixelnum, copypixel);
+          leds[pixelnum] = leds[pixelnum + LED_COL];
           pixelnum++;
         }
       }
     
      for (y=0; y < LED_COL; y++) {
-        setPixelRGB(pixelnum++, pixelcol[y]);
+        leds[pixelnum++] = memoled[y];
       }
       FastLED.show();
       delay(wait);
    }
-   */
+   
 }
 
 void rotate_right(int nbstep,int wait) {
 
   int x,y;
   int pixelnum;
-  /*
-  uint32_t pixelcol[LED_COL];
+
+  CRGB memoled[LED_COL];
 
    for (int idx = 0 ; idx < nbstep ; idx++ )
    { 
       pixelnum = NUM_LEDS - LED_COL;
       for (y=0; y < LED_COL; y++) {
-        pixelcol[y] = getPixel(y + pixelnum);
+        memoled[y] = leds[y + pixelnum];
       }
     
       for  (x= (LED_ROW - 1) ; x > 0; x--) {
         for (y=0; y < LED_COL; y++) {
-          setPixelRGB(pixelnum, getPixel(pixelnum - LED_COL));
+          leds[pixelnum] = leds[pixelnum - LED_COL];
           pixelnum++;
         }
         pixelnum=pixelnum-( LED_COL * 2);
       }
     
      for (y=0; y < LED_COL; y++) {
-        setPixelRGB(y, pixelcol[y]);
+        leds[y] = memoled[y];
       }
       FastLED.show();
       delay(wait);
    }
- */
+ 
 }
 
 
-void rendertxt(int charnum , int column) {
+void rendertxt(int charnum , int column,bool overwrite) {
   
     int x,y;
     int set;
@@ -469,7 +591,11 @@ void rendertxt(int charnum , int column) {
             set = thebit & 1 << y;
             if ( set != 0 )
               setPixelRGB(pixelnum, currentcolorR, currentcolorG, currentcolorB);
-
+            else
+            {
+              if (overwrite)
+                setPixelRGB(pixelnum, 0, 0, 0);
+            }
         }
 
     }
@@ -481,8 +607,8 @@ void scrollTxt(int charnum,int wait) {
   
  for ( int colnum = LED_ROW -1 ; colnum > LED_ROW - 8 ; colnum-- )
  {
-  rotate_left(1,5);
-  rendertxt(charnum,colnum);
+  rotate_left(1,10);
+  rendertxt(charnum,colnum,true);
   FastLED.show();
   delay(wait);   
  }
@@ -498,23 +624,23 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
   if ( skin == 0 )
   {
     // default skin current color used
-    rendertxt(0x01,starcol);  
+    rendertxt(0x01,starcol,false);  
   }
   else if ( skin == 1 )    
   {
     //  skin tired eyes
     setCurrentColor(100, 100, 100);
-    rendertxt(0x01,starcol);  
+    rendertxt(0x01,starcol,false);  
     setCurrentColor(255, 128, 128);
-    rendertxt(0x02,starcol);  
+    rendertxt(0x02,starcol,false);  
     setCurrentColor(255, 0, 0);
-    rendertxt(0x03,starcol);  
+    rendertxt(0x03,starcol,false);  
   }
   else if ( skin == 2 )    
   {
     //  skin hypno eye step 1
     setCurrentColor(200, 200, 0);
-    rendertxt(0x04,starcol);  
+    rendertxt(0x04,starcol,false);  
   //  currentcolor = strip.Color(200,200, 0);
   //  rendertxt(0x05,starcol);  
   }
@@ -522,51 +648,51 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
   {
     //  skin hypno eye step 2
     setCurrentColor(200, 200, 0);
-    rendertxt(0x05,starcol);  
+    rendertxt(0x05,starcol,false);  
   //  currentcolor = strip.Color(200, 200, 200);
-  //  rendertxt(0x05,starcol);  
+  //  rendertxt(0x05,starcol,false);  
   }
     else if ( skin == 4 )    
   {
     //  skin gradient sauron eye
     setCurrentColor(136, 0, 21);
-    rendertxt(0x06,starcol);  
+    rendertxt(0x06,starcol,false);  
     setCurrentColor(237, 28, 36);
-    rendertxt(0x07,starcol);  
+    rendertxt(0x07,starcol,false);  
     setCurrentColor(255, 127, 39);
-    rendertxt(0x08,starcol);  
+    rendertxt(0x08,starcol,false);  
     setCurrentColor(255, 201, 14);
-    rendertxt(0x09,starcol);  
+    rendertxt(0x09,starcol,false);  
   }
     else if ( skin == 5 )    
   {
     //  skin gradient blue eye
     setCurrentColor(230, 230,230);
-    rendertxt(0x01,starcol);  
+    rendertxt(0x01,starcol,false);  
     setCurrentColor(153, 217, 234);
-    rendertxt(0x08,starcol);  
+    rendertxt(0x08,starcol,false);  
     setCurrentColor(0, 162, 232);
-    rendertxt(0x09,starcol);  
+    rendertxt(0x09,starcol,false);  
   }
     else if ( skin == 6 )    
   {
     //  skin gradient green eye
     setCurrentColor(230, 230,230);
-    rendertxt(0x01,starcol);  
+    rendertxt(0x01,starcol,false);  
     setCurrentColor(181, 230, 29);
-    rendertxt(0x08,starcol);  
+    rendertxt(0x08,starcol,false);  
     setCurrentColor(34, 117, 76);
-    rendertxt(0x09,starcol);  
+    rendertxt(0x09,starcol,false);  
   }
     else if ( skin == 7 )    
   {
     //  skin gradient green eye
     setCurrentColor(230, 230,230);
-    rendertxt(0x01,starcol);  
+    rendertxt(0x01,starcol,false);  
     setCurrentColor(185, 122, 27);
-    rendertxt(0x08,starcol);  
+    rendertxt(0x08,starcol,false);  
     setCurrentColor(136, 0, 21);
-    rendertxt(0x09,starcol);  
+    rendertxt(0x09,starcol,false);  
   }
 
   setPixelRGB( ( offsetX +1 ) * LED_COL + offsetY + (starcol*8) + 1, 0, 0, 0);
