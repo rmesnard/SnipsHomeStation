@@ -2,6 +2,7 @@
 
 #include <FastLED.h>
 #include <SerialCommands.h>
+#include "Adafruit_CCS811.h"
 
 FASTLED_USING_NAMESPACE
 
@@ -18,6 +19,7 @@ FASTLED_USING_NAMESPACE
 #define FRAMES_PER_SECOND  10
 
 CRGB leds[NUM_LEDS];
+Adafruit_CCS811 ccs;
 
 char serial_command_buffer_[CMDBUFSIZE];
 SerialCommands serial_commands_(&Serial, serial_command_buffer_, sizeof(serial_command_buffer_), "\r\n", " ");
@@ -325,8 +327,13 @@ void cmd_eyes_anim(SerialCommands* sender)
   if (param_str != NULL)
   {
       int animC =atoi(param_str);
+
+      if (animC == 3)     // louche    
+        louche();
+
       if ((param_str = sender->Next()) != NULL)
       {
+        
       int animP = atoi(param_str);
 
       if (animC == 1)     // round spin eye    
@@ -337,8 +344,8 @@ void cmd_eyes_anim(SerialCommands* sender)
           eyeSk =  animP;          
           displayEyes(currentX,currentY);
         }
-      
-      }
+
+    }
   }
  
   sender->GetSerial()->println("OK - EYES ANIM");
@@ -350,11 +357,11 @@ void cmd_clock(SerialCommands* sender)
   if (param_str != NULL)
   {
       FastLED.clear();
-      rendertxt(param_str[0],0,false);
-      rendertxt(param_str[1],7,false);
-      rendertxt(param_str[2],13,false);
-      rendertxt(param_str[3],18,false);
-      rendertxt(param_str[4],25,false);
+      rendertxt(param_str[0],0,false,false);
+      rendertxt(param_str[1],7,false,false);
+      rendertxt(param_str[2],13,false,false);
+      rendertxt(param_str[3],18,false,false);
+      rendertxt(param_str[4],25,false,false);
       FastLED.show();
   }
  
@@ -369,7 +376,7 @@ void cmd_text_print(SerialCommands* sender)
       int colT = 0;
       for ( int idx =0; idx < strlen(param_str);idx++)
       {
-      rendertxt(param_str[idx],colT,false);
+      rendertxt(param_str[idx],colT,false,false);
       colT += 8;
       }  
   }
@@ -405,6 +412,29 @@ void cmd_rotate(SerialCommands* sender)
   sender->GetSerial()->println("OK - SCROLL");
 }
 
+void cmd_readccs(SerialCommands* sender)
+{
+  if(ccs.available()){
+      if(!ccs.readData()){
+        sender->GetSerial()->print("CO2:");
+        sender->GetSerial()->print(ccs.geteCO2());
+        sender->GetSerial()->print(",TVOC:");
+        sender->GetSerial()->print(ccs.getTVOC());
+        sender->GetSerial()->print(",TEMP:");
+        float temp = ccs.calculateTemperature();
+        sender->GetSerial()->println(temp);
+      }
+      else{
+        sender->GetSerial()->println("ERROR - CCS NO DATA");
+      }
+    }
+   else
+    {
+      sender->GetSerial()->println("ERROR - CCS UNAVAILABLE");
+    }
+ 
+}
+
 SerialCommand cmd_show_("SHOW", cmd_show);
 SerialCommand cmd_clear_("CLEAR", cmd_clear);
 SerialCommand cmd_clean_("CLEAN", cmd_clean);
@@ -419,12 +449,23 @@ SerialCommand cmd_clock_("CLOCK", cmd_clock);
 SerialCommand cmd_text_print_("TEXT", cmd_text_print);
 SerialCommand cmd_text_scroll_("SCROLL", cmd_text_scroll);
 SerialCommand cmd_rotate_("ROT", cmd_rotate);
+SerialCommand cmd_readccs_("CCS", cmd_readccs);
+
 
 void setup() {
 
   Serial.begin(57600);
  
   delay(1000); // 1 second delay for recovery
+
+  if(!ccs.begin()){
+    Serial.println("Failed to start sensor! Please check your wiring.");
+    while(1);
+  }
+
+  // Wait for the sensor to be ready
+  while(!ccs.available());
+  Serial.println("CCS Started.");
   
   // tell FastLED about the LED strip configuration
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
@@ -449,6 +490,7 @@ void setup() {
   serial_commands_.AddCommand(&cmd_text_print_);
   serial_commands_.AddCommand(&cmd_text_scroll_);
   serial_commands_.AddCommand(&cmd_rotate_);
+  serial_commands_.AddCommand(&cmd_readccs_);
   
   Serial.println("Ready!");
   
@@ -576,7 +618,7 @@ void rotate_right(int nbstep,int wait) {
 }
 
 
-void rendertxt(int charnum , int column,bool overwrite) {
+void rendertxt(int charnum , int column,bool overwrite,bool invert) {
   
     int x,y;
     int set;
@@ -590,10 +632,13 @@ void rendertxt(int charnum , int column,bool overwrite) {
             thebit = pgm_read_byte_near(font8x8_basic + ( charnum * 8 ) + x );
             set = thebit & 1 << y;
             if ( set != 0 )
-              setPixelRGB(pixelnum, currentcolorR, currentcolorG, currentcolorB);
+            {
+              if (!invert)
+                setPixelRGB(pixelnum, currentcolorR, currentcolorG, currentcolorB);
+            }
             else
             {
-              if (overwrite)
+              if ((overwrite) | (invert))
                 setPixelRGB(pixelnum, 0, 0, 0);
             }
         }
@@ -608,14 +653,11 @@ void scrollTxt(int charnum,int wait) {
  for ( int colnum = LED_ROW -1 ; colnum > LED_ROW - 8 ; colnum-- )
  {
   rotate_left(1,10);
-  rendertxt(charnum,colnum,true);
+  rendertxt(charnum,colnum,true,false);
   FastLED.show();
   delay(wait);   
  }
 }
-
-
-
 
 
 void displayEye(int starcol, int offsetX, int offsetY,int skin) 
@@ -623,82 +665,49 @@ void displayEye(int starcol, int offsetX, int offsetY,int skin)
 
   if ( skin == 0 )
   {
-    // default skin current color used
-    rendertxt(0x01,starcol,false);  
+    int storeR,storeG,storeB;
+    storeR = currentcolorR;
+    storeG = currentcolorG;
+    storeB = currentcolorB;
+    setCurrentColor(100, 100, 100);
+    rendertxt(0x01,starcol,false,false);  
+    for ( int x= 0; x < 4; x++ )
+      for ( int y= 0; y < 4; y++ )
+         setPixelRGB( ( offsetX + x ) * LED_COL + offsetY + (starcol*8) + y, storeR, storeG, storeB);
+
+    setCurrentColor(storeR, storeG, storeB);
   }
   else if ( skin == 1 )    
   {
     //  skin tired eyes
     setCurrentColor(100, 100, 100);
-    rendertxt(0x01,starcol,false);  
+    rendertxt(0x01,starcol,false,false);  
     setCurrentColor(255, 128, 128);
-    rendertxt(0x02,starcol,false);  
+    rendertxt(0x02,starcol,false,false);  
     setCurrentColor(255, 0, 0);
-    rendertxt(0x03,starcol,false);  
+    rendertxt(0x03,starcol,false,false);  
   }
   else if ( skin == 2 )    
   {
-    //  skin hypno eye step 1
-    setCurrentColor(200, 200, 0);
-    rendertxt(0x04,starcol,false);  
-  //  currentcolor = strip.Color(200,200, 0);
-  //  rendertxt(0x05,starcol);  
-  }
-    else if ( skin == 3 )    
-  {
-    //  skin hypno eye step 2
-    setCurrentColor(200, 200, 0);
-    rendertxt(0x05,starcol,false);  
-  //  currentcolor = strip.Color(200, 200, 200);
-  //  rendertxt(0x05,starcol,false);  
-  }
-    else if ( skin == 4 )    
-  {
     //  skin gradient sauron eye
     setCurrentColor(136, 0, 21);
-    rendertxt(0x06,starcol,false);  
+    rendertxt(0x06,starcol,false,false);  
     setCurrentColor(237, 28, 36);
-    rendertxt(0x07,starcol,false);  
+    rendertxt(0x07,starcol,false,false);  
     setCurrentColor(255, 127, 39);
-    rendertxt(0x08,starcol,false);  
+    rendertxt(0x08,starcol,false,false);  
     setCurrentColor(255, 201, 14);
-    rendertxt(0x09,starcol,false);  
+    rendertxt(0x09,starcol,false,false);  
   }
-    else if ( skin == 5 )    
-  {
-    //  skin gradient blue eye
-    setCurrentColor(230, 230,230);
-    rendertxt(0x01,starcol,false);  
-    setCurrentColor(153, 217, 234);
-    rendertxt(0x08,starcol,false);  
-    setCurrentColor(0, 162, 232);
-    rendertxt(0x09,starcol,false);  
-  }
-    else if ( skin == 6 )    
-  {
-    //  skin gradient green eye
-    setCurrentColor(230, 230,230);
-    rendertxt(0x01,starcol,false);  
-    setCurrentColor(181, 230, 29);
-    rendertxt(0x08,starcol,false);  
-    setCurrentColor(34, 117, 76);
-    rendertxt(0x09,starcol,false);  
-  }
-    else if ( skin == 7 )    
-  {
-    //  skin gradient green eye
-    setCurrentColor(230, 230,230);
-    rendertxt(0x01,starcol,false);  
-    setCurrentColor(185, 122, 27);
-    rendertxt(0x08,starcol,false);  
-    setCurrentColor(136, 0, 21);
-    rendertxt(0x09,starcol,false);  
-  }
+  
 
   setPixelRGB( ( offsetX +1 ) * LED_COL + offsetY + (starcol*8) + 1, 0, 0, 0);
   setPixelRGB( ( offsetX + 2 ) * LED_COL + offsetY + (starcol*8) + 1, 0, 0, 0);
   setPixelRGB( ( offsetX + 1 ) * LED_COL + offsetY + (starcol*8) + 2 , 0, 0, 0);
   setPixelRGB( ( offsetX + 2)  * LED_COL + offsetY + (starcol*8) + 2, 0, 0, 0);
+
+   
+    rendertxt(0x01,starcol,false,true);  
 
 }
 
@@ -706,43 +715,18 @@ void displayEyes(int offsetX, int offsetY)
 {
   FastLED.clear();
 
-  if ( eyeSk == 0 )
+  if ( eyeSk == 4 )
   {
-    // default skin current color used
-    displayEye(eyexL,offsetX,offsetY,0);
-    displayEye(eyexR,offsetX,offsetY,0);
+    setCurrentColor(255, 201, 14);
+    displayEye(eyexL,offsetX,offsetY,3);
+    setCurrentColor(0, 255, 0);
+    displayEye(eyexR,offsetX,offsetY,3);
   }
-  else if ( eyeSk == 1 )    
+  else    
   {
-    //  skin tired eye
-    displayEye(eyexL,offsetX,offsetY,1);
-    displayEye(eyexR,offsetX,offsetY,1);
+    displayEye(eyexL,offsetX,offsetY,eyeSk);
+    displayEye(eyexR,offsetX,offsetY,eyeSk);
   }
-  else if ( eyeSk == 2 )    
-  {
-    // sauron eye
-    displayEye(eyexL,offsetX,offsetY,4);
-    displayEye(eyexR,offsetX,offsetY,4);
-  }
-  else if ( eyeSk == 3 )    
-  {
-    // blue eye
-    displayEye(eyexL,offsetX,offsetY,5);
-    displayEye(eyexR,offsetX,offsetY,5);
-  }
-  else if ( eyeSk == 4 )    
-  {
-    // green eye
-    displayEye(eyexL,offsetX,offsetY,6);
-    displayEye(eyexR,offsetX,offsetY,6);
-  }
-  else if ( eyeSk == 5 )    
-  {
-    // veron eye
-    displayEye(eyexL,offsetX,offsetY,7);
-    displayEye(eyexR,offsetX,offsetY,5);
-  }
-
 
   currentX = offsetX;
   currentY =  offsetY;
@@ -831,6 +815,58 @@ void roundSpin(int times)
     displayEyes(2, 4); delay(40); if (i==(times-1)) delay(50);
     displayEyes(1, 4); delay(40);
   }
+}
+
+void louche()
+{
+  
+  movePupil(2, 2, 40);
+  delay(100);
+  
+for ( int x = 2 ; x > 0 ; x-- )
+{
+  FastLED.clear();
+  if ( eyeSk == 5 )
+  {
+    // default skin current color used
+    displayEye(eyexL,4-x,2,7);
+    displayEye(eyexR,x,2,8);
+  }
+  else 
+  {
+    //  skin tired eye
+    displayEye(eyexL,4-x,2,eyeSk);
+    displayEye(eyexR,x,2,eyeSk);
+  }
+  FastLED.show();
+  delay(100);
+}
+
+delay(600);
+
+
+for ( int x = 0 ; x < 3 ; x++ )
+{
+  FastLED.clear();
+  if ( eyeSk == 5 )
+  {
+    // default skin current color used
+    displayEye(eyexL,4-x,2,7);
+    displayEye(eyexR,x,2,8);
+  }
+  else 
+  {
+    //  skin tired eye
+    displayEye(eyexL,4-x,2,eyeSk);
+    displayEye(eyexR,x,2,eyeSk);
+  }
+  FastLED.show();
+  delay(200);
+}
+
+  currentX = 2;
+  currentY =  2;
+  
 }
 
 void rainbow() 
